@@ -1,1 +1,551 @@
-<p>cargo-registration works!</p>
+<div class="print:hidden max-w-4xl mx-auto p-6 flex flex-col gap-6">
+  <div>
+    <h1 class="text-2xl font-bold text-text-primary">Cadastro de Nova Carga</h1>
+
+    <div class="mt-4 h-2 rounded-full bg-bg-surface overflow-hidden">
+      <div class="h-full bg-primary transition-all duration-300" [style.width.%]="progress()"></div>
+    </div>
+
+    <p class="mt-2 text-sm text-text-secondary">
+      Passo {{ currentStepIndex() + 1 }} de {{ steps.length }}: {{ steps[currentStepIndex()] }}
+    </p>
+  </div>
+
+  @if (phase() === 'config') {
+    <form
+      [formGroup]="cargoConfigForm"
+      (ngSubmit)="startCargo()"
+      class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-6"
+    >
+      <div class="flex flex-col gap-4">
+        <h2 class="text-lg font-semibold text-text-primary">Configuração de Entregas</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Número de destinos
+            </label>
+            <input
+              type="number"
+              min="1"
+              formControlName="totalDestinations"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Ordem do carregamento
+            </label>
+            <input
+              type="text"
+              placeholder="3° Carregamento"
+              formControlName="loadOrder"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Data do carregamento
+            </label>
+            <input
+              type="date"
+              formControlName="loadDate"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-4 pt-4 border-t border-border">
+        <h2 class="text-lg font-semibold text-text-primary">Dados da Carga</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Motorista</label
+            >
+            <input
+              type="text"
+              formControlName="driverName"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Telefone motorista
+            </label>
+            <input
+              type="text"
+              formControlName="driverPhone"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Caminhão</label
+            >
+            <input
+              type="text"
+              formControlName="truck"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Responsável pela conferência
+            </label>
+            <input
+              type="text"
+              formControlName="inspectionResponsible"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Responsável pela organização
+            </label>
+            <input
+              type="text"
+              formControlName="organizationResponsible"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Auxiliar 1</label
+            >
+            <input
+              type="text"
+              formControlName="assistant1"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-border">
+        <button
+          type="submit"
+          class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors"
+        >
+          Iniciar Cadastro
+        </button>
+      </div>
+    </form>
+  }
+
+  @if (phase() === 'wizard') {
+    <form
+      [formGroup]="deliveryForm"
+      (ngSubmit)="confirmDelivery()"
+      class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-6"
+    >
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-text-primary">
+          Entrega {{ currentIndex() + 1 }} de {{ totalDestinations() }}
+        </h2>
+        <span
+          class="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-badge bg-info-subtle text-info"
+        >
+          Em preenchimento
+        </span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+            Nº Romaneio
+          </label>
+        </div>
+        <div class="flex gap-2 max-w-xs">
+          <input
+            type="text"
+            formControlName="romaneioNumber"
+            class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none flex-1"
+          />
+          <button
+            type="button"
+            (click)="regenerateRomaneioNumber()"
+            class="h-10 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+          >
+            Gerar
+          </button>
+        </div>
+      </div>
+
+      <div formGroupName="client" class="flex flex-col gap-4 pt-4 border-t border-border">
+        <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+          Dados do Cliente
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Nome / Razão Social
+            </label>
+            <input
+              type="text"
+              formControlName="name"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >CNPJ/CPF</label
+            >
+            <input
+              type="text"
+              formControlName="document"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2 md:col-span-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Endereço</label
+            >
+            <input
+              type="text"
+              formControlName="address"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Bairro</label
+            >
+            <input
+              type="text"
+              formControlName="neighborhood"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Cidade</label
+            >
+            <input
+              type="text"
+              formControlName="city"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Estado</label
+            >
+            <input
+              type="text"
+              maxlength="2"
+              formControlName="state"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">CEP</label>
+            <input
+              type="text"
+              formControlName="zipCode"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Telefone</label
+            >
+            <input
+              type="text"
+              formControlName="phone"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-4 pt-4 border-t border-border">
+        <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">Pedido</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Nº Licitação
+            </label>
+            <input
+              type="text"
+              formControlName="biddingNumber"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Modalidade</label
+            >
+            <input
+              type="text"
+              formControlName="modality"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex items-end gap-2 pb-2">
+            <input
+              type="checkbox"
+              id="hasInstallation"
+              formControlName="hasInstallation"
+              class="h-4 w-4"
+            />
+            <label for="hasInstallation" class="text-sm text-text-primary">Instalação</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-4 pt-4 border-t border-border">
+        <div class="flex justify-between items-center">
+          <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+            Checklist de Carregamento
+          </h3>
+          <button
+            type="button"
+            (click)="addItem()"
+            class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+          >
+            Adicionar Item
+          </button>
+        </div>
+
+        <div formArrayName="items" class="flex flex-col gap-3">
+          @for (item of itemsControls; track item; let i = $index) {
+            <div [formGroupName]="i" class="border border-border rounded p-3 flex flex-col gap-3">
+              <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <div class="flex flex-col gap-1 md:col-span-1">
+                  <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                    Código
+                  </label>
+                  <input
+                    type="text"
+                    formControlName="code"
+                    class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1 md:col-span-2">
+                  <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                    Produto
+                  </label>
+                  <input
+                    type="text"
+                    formControlName="product"
+                    class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                    Quantidade
+                  </label>
+                  <input
+                    type="number"
+                    formControlName="quantity"
+                    class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                    Qtd. Volumes
+                  </label>
+                  <input
+                    type="number"
+                    formControlName="volumeCount"
+                    class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                    Peso (kg)
+                  </label>
+                  <input
+                    type="number"
+                    formControlName="weight"
+                    class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div class="flex gap-3 items-end">
+                <div class="flex flex-col gap-1 flex-1">
+                  <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                    Observação
+                  </label>
+                  <input
+                    type="text"
+                    formControlName="notes"
+                    class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  (click)="removeItem(i)"
+                  [disabled]="itemsControls.length === 1"
+                  class="h-9 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-50"
+                >
+                  Remover
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-border">
+        <button
+          type="submit"
+          [disabled]="isSaving()"
+          class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+        >
+          {{ isSaving() ? 'Salvando…' : 'Concluir e Avançar' }}
+        </button>
+      </div>
+    </form>
+  }
+
+  <div class="bg-bg-card border border-border rounded-card overflow-hidden">
+    <div class="p-4 border-b border-border">
+      <h2 class="text-lg font-semibold text-text-primary">Resumo de Romaneios Gerados</h2>
+    </div>
+
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-bg-surface text-text-secondary text-xs uppercase tracking-wide">
+          <th class="text-left px-4 py-2 font-bold">Nº Romaneio</th>
+          <th class="text-left px-4 py-2 font-bold">Cliente</th>
+          <th class="text-left px-4 py-2 font-bold">Cidade</th>
+          <th class="text-left px-4 py-2 font-bold">Itens</th>
+          <th class="text-left px-4 py-2 font-bold">Status</th>
+          <th class="text-right px-4 py-2 font-bold">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (delivery of cargo()?.deliveries ?? []; track delivery.id) {
+          <tr class="border-t border-border">
+            <td class="px-4 py-3 text-text-primary">{{ delivery.romaneioNumber }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ delivery.client.name }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ delivery.client.city }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ delivery.items.length }}</td>
+            <td class="px-4 py-3">
+              <span
+                class="text-xs font-bold px-2 py-1 rounded-badge bg-success-subtle text-success"
+              >
+                Gerado
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button
+                type="button"
+                (click)="printDeliveryRomaneio(delivery)"
+                class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+              >
+                Romaneio
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="px-4 py-6 text-center text-text-muted">
+              Nenhum romaneio gerado ainda.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (printingDelivery(); as delivery) {
+  <div class="hidden print:flex flex-col gap-6 p-8 bg-print-bg text-print-ink">
+    <div class="border-b-2 border-print-ink pb-4 flex justify-between items-end">
+      <div>
+        <h3 class="text-3xl font-bold uppercase tracking-wide">Romaneio de Carga</h3>
+        <div class="text-sm mt-2">
+          <span class="font-bold">Nº Romaneio:</span> {{ delivery.romaneioNumber }}
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-xl font-bold">Cidade: {{ delivery.client.city }}</div>
+        @if (delivery.client.state) {
+          <div class="text-sm">{{ delivery.client.state }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 border border-print-ink p-4 text-sm">
+      <div>
+        <p><span class="font-bold">Cliente:</span> {{ delivery.client.name }}</p>
+        @if (delivery.client.document) {
+          <p><span class="font-bold">CNPJ/CPF:</span> {{ delivery.client.document }}</p>
+        }
+        @if (delivery.client.address) {
+          <p><span class="font-bold">Endereço:</span> {{ delivery.client.address }}</p>
+        }
+        @if (delivery.client.neighborhood) {
+          <p><span class="font-bold">Bairro:</span> {{ delivery.client.neighborhood }}</p>
+        }
+      </div>
+      <div>
+        @if (delivery.client.zipCode) {
+          <p><span class="font-bold">CEP:</span> {{ delivery.client.zipCode }}</p>
+        }
+        @if (delivery.client.phone) {
+          <p><span class="font-bold">Telefone:</span> {{ delivery.client.phone }}</p>
+        }
+        @if (delivery.biddingNumber) {
+          <p><span class="font-bold">Nº Licitação:</span> {{ delivery.biddingNumber }}</p>
+        }
+        @if (delivery.modality) {
+          <p><span class="font-bold">Modalidade:</span> {{ delivery.modality }}</p>
+        }
+      </div>
+    </div>
+
+    <table class="w-full border-collapse text-sm">
+      <thead>
+        <tr class="border-b-2 border-print-ink">
+          <th class="py-2 text-left font-bold">Código</th>
+          <th class="py-2 text-left font-bold">Produto</th>
+          <th class="py-2 text-right font-bold">Qtd</th>
+          <th class="py-2 text-right font-bold">Volumes</th>
+          <th class="py-2 text-right font-bold">Peso</th>
+          <th class="py-2 text-left font-bold">Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of delivery.items; track item.code) {
+          <tr class="border-b border-print-ink">
+            <td class="py-2">{{ item.code || '—' }}</td>
+            <td class="py-2 font-bold">{{ item.product }}</td>
+            <td class="py-2 text-right">{{ item.quantity }}</td>
+            <td class="py-2 text-right">{{ item.volumeCount ?? '—' }}</td>
+            <td class="py-2 text-right">{{ item.weight ?? '—' }}kg</td>
+            <td class="py-2">{{ item.notes || '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

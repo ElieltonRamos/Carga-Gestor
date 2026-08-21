@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { Romaneio } from '../types/packing-label';
+import { PackingList } from '../types/packing-label';
 
 @Component({
   selector: 'app-packing-label',
@@ -7,15 +7,17 @@ import { Romaneio } from '../types/packing-label';
   templateUrl: './packing-label.html',
 })
 export class PackingLabel {
-  romaneio = input.required<Romaneio>();
+  packingLists = input.required<PackingList[]>();
 
-  totalVolumes = computed(() => this.romaneio().itens.length);
+  totalVolumes(list: PackingList): number {
+    return list.items.length;
+  }
 
-  pesoTotal = computed(() =>
-    this.romaneio().itens.reduce((soma, item) => soma + (item.peso ?? 0), 0),
-  );
+  totalWeight(list: PackingList): number {
+    return list.items.reduce((sum, item) => sum + (item.weight ?? 0), 0);
+  }
 
-  imprimir(): void {
+  print(): void {
     window.print();
   }
 }

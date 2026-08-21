@@ -1,18 +1,18 @@
-export interface ItemRomaneio {
-  produto: string;
+export interface PackingItem {
+  quantity: number;
+  product: string;
   volume: string;
-  codigo: string;
-  quantidade: number;
-  peso?: number;
+  code: string;
+  weight?: number;
 }
 
-export interface Romaneio {
-  numeroEntrega: string;
-  cidade: string;
-  data: string;
-  hora: string;
-  transportadora: string;
-  placa: string;
-  motorista: string;
-  itens: ItemRomaneio[];
+export interface PackingList {
+  date: string;
+  time: string;
+  deliveryNumber: string;
+  city: string;
+  carrier: string;
+  plate: string;
+  driver: string;
+  items: PackingItem[];
 }

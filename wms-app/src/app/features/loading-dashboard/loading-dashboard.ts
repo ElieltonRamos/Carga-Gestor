@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CargoService } from '../cargo-registration/services/cargo-registration.service';
 import {
   computeCargoProgress,
@@ -12,50 +12,53 @@ import {
   templateUrl: './loading-dashboard.html',
 })
 export class LoadingDashboard {
-  private readonly cargoService = inject(CargoService);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly cargoService = inject(CargoService);
 
-  dateFilter = signal<string>(this.todayIso());
+  private cargoId = this.route.snapshot.paramMap.get('cargoId')!;
 
-  cargos = this.cargoService.cargos;
+  expandedDeliveryId = signal<string | null>(null);
 
-  filteredCargos = computed(() => {
-    const filter = this.dateFilter();
-    if (!filter) return this.cargos();
-    return this.cargos().filter((c) => c.loadDate === filter);
-  });
+  cargo = this.cargoService.getCargoSignal(this.cargoId);
 
-  overall = computed(() =>
-    computeCargoProgress(this.filteredCargos().flatMap((c) => c.deliveries)),
-  );
+  notFound = computed(() => this.cargo() === null);
+
+  overall = computed(() => computeCargoProgress(this.cargo()?.deliveries ?? []));
 
   deliveryRows = computed(() =>
-    this.filteredCargos().flatMap((cargo) =>
-      cargo.deliveries.map((delivery) => ({
-        cargoId: cargo.id,
-        loadOrder: cargo.loadOrder,
-        progress: computeDeliveryProgress(delivery),
-      })),
-    ),
+    (this.cargo()?.deliveries ?? []).map((delivery) => ({
+      delivery,
+      progress: computeDeliveryProgress(delivery),
+    })),
   );
 
-  onDateChange(value: string): void {
-    this.dateFilter.set(value);
+  toggleExpand(deliveryId: string): void {
+    this.expandedDeliveryId.set(this.expandedDeliveryId() === deliveryId ? null : deliveryId);
   }
 
-  clearFilter(): void {
-    this.dateFilter.set('');
+  isExpanded(deliveryId: string): boolean {
+    return this.expandedDeliveryId() === deliveryId;
   }
 
-  goToNewCargo(): void {
-    this.router.navigate(['/cargas/novo']);
+  itemStatus(
+    loadedQuantity: number | undefined,
+    volumeCount: number | undefined,
+  ): 'loaded' | 'pending' {
+    const total = volumeCount ?? 1;
+    const loaded = loadedQuantity ?? 0;
+    return loaded >= total ? 'loaded' : 'pending';
   }
 
-  goToScan(cargoId: string, deliveryId: string): void {
-    this.router.navigate(['/conferencia', cargoId, deliveryId]);
+  goToScan(deliveryId: string): void {
+    this.router.navigate(['/conferencia', this.cargoId, deliveryId]);
   }
 
-  private todayIso(): string {
-    return new Date().toISOString().slice(0, 10);
+  goBack(): void {
+    this.router.navigate(['/']);
+  }
+
+  goToDetail(deliveryId: string): void {
+    this.router.navigate(['/cargas', this.cargoId, 'entregas', deliveryId]);
   }
 }

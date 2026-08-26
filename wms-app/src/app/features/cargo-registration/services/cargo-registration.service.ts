@@ -1,16 +1,22 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Cargo, Delivery } from '../types/cargo-registration';
 
-const STORAGE_KEY = 'wms_cargo';
+const STORAGE_KEY = 'wms_cargos';
 const SIMULATED_DELAY_MS = 300;
+
+type CargoInput = Omit<Cargo, 'id' | 'issueDate' | 'deliveries' | 'createdAt'>;
 
 @Injectable({ providedIn: 'root' })
 export class CargoService {
-  private cargoSignal = signal<Cargo | null>(this.loadFromStorage());
+  private cargosSignal = signal<Cargo[]>(this.loadFromStorage());
 
-  cargo = this.cargoSignal.asReadonly();
+  cargos = this.cargosSignal.asReadonly();
 
-  createCargo(data: Omit<Cargo, 'id' | 'issueDate' | 'deliveries' | 'createdAt'>): Promise<Cargo> {
+  getCargoSignal(cargoId: string) {
+    return computed(() => this.cargosSignal().find((c) => c.id === cargoId) ?? null);
+  }
+
+  createCargo(data: CargoInput): Promise<Cargo> {
     const cargo: Cargo = {
       ...data,
       id: this.generateId('CARGA'),
@@ -19,31 +25,36 @@ export class CargoService {
       createdAt: new Date().toISOString(),
     };
 
-    return this.delay(() => this.writeToStorage(cargo));
+    return this.delay(() => {
+      this.writeToStorage([...this.cargosSignal(), cargo]);
+      return cargo;
+    });
   }
 
-  saveDelivery(delivery: Omit<Delivery, 'status'>): Promise<Cargo> {
+  saveDelivery(cargoId: string, delivery: Omit<Delivery, 'status'>): Promise<Cargo> {
     return this.delay(() => {
-      const current = this.cargoSignal();
-      if (!current) {
-        throw new Error('Nenhuma carga em andamento.');
+      const current = this.cargosSignal();
+      const target = current.find((c) => c.id === cargoId);
+      if (!target) {
+        throw new Error('Carga não encontrada.');
       }
 
-      const updated: Cargo = {
-        ...current,
+      const updatedCargo: Cargo = {
+        ...target,
         deliveries: [
-          ...current.deliveries.filter((item) => item.id !== delivery.id),
+          ...target.deliveries.filter((item) => item.id !== delivery.id),
           { ...delivery, status: 'generated' as const },
         ].sort((a, b) => a.sequence - b.sequence),
       };
 
-      return this.writeToStorage(updated);
+      const updatedList = current.map((c) => (c.id === cargoId ? updatedCargo : c));
+      this.writeToStorage(updatedList);
+      return updatedCargo;
     });
   }
 
-  resetCargo(): void {
-    localStorage.removeItem(STORAGE_KEY);
-    this.cargoSignal.set(null);
+  deleteCargo(cargoId: string): void {
+    this.writeToStorage(this.cargosSignal().filter((c) => c.id !== cargoId));
   }
 
   generateCode(): string {
@@ -58,15 +69,15 @@ export class CargoService {
     return `${prefix}-${Date.now()}`;
   }
 
-  private writeToStorage(cargo: Cargo): Cargo {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cargo));
-    this.cargoSignal.set(cargo);
-    return cargo;
+  private writeToStorage(cargos: Cargo[]): Cargo[] {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cargos));
+    this.cargosSignal.set(cargos);
+    return cargos;
   }
 
-  private loadFromStorage(): Cargo | null {
+  private loadFromStorage(): Cargo[] {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Cargo) : null;
+    return raw ? (JSON.parse(raw) as Cargo[]) : [];
   }
 
   private delay<T>(fn: () => T): Promise<T> {

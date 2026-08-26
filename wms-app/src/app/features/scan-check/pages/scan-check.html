@@ -1,0 +1,113 @@
+<div class="min-h-screen bg-bg-surface flex items-center justify-center p-6">
+  <div class="relative w-[390px] h-[780px] bg-black rounded-[48px] p-3 shadow-2xl">
+    <!-- Notch -->
+    <div
+      class="absolute top-3 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10"
+    ></div>
+
+    <!-- Tela -->
+    <div class="w-full h-full bg-bg-base rounded-[36px] overflow-hidden flex flex-col">
+      @if (notFound()) {
+        <div class="flex-1 flex items-center justify-center p-6">
+          <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+            Romaneio não encontrado.
+            <button (click)="goBack()" class="text-primary underline ml-2">Voltar</button>
+          </div>
+        </div>
+      } @else {
+        <div class="bg-bg-card border-b border-border p-4 pt-8 flex flex-col gap-3">
+          <div class="flex justify-between items-center">
+            <button type="button" (click)="goBack()" class="text-text-secondary text-sm">
+              ← Voltar
+            </button>
+            <span class="text-xs font-bold uppercase tracking-wide text-text-secondary">
+              Romaneio {{ delivery()!.romaneioNumber }}
+            </span>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div class="flex justify-between items-baseline">
+              <span class="text-sm text-text-secondary">{{ delivery()!.client.city }}</span>
+              <span class="text-2xl font-bold text-text-primary"
+                >{{ progress()!.percentage }}%</span
+              >
+            </div>
+            <div class="h-3 rounded-full bg-bg-surface overflow-hidden">
+              <div
+                class="h-full transition-all duration-300"
+                [class.bg-success]="progress()!.status === 'complete'"
+                [class.bg-warning]="progress()!.status === 'partial'"
+                [class.bg-text-muted]="progress()!.status === 'pending'"
+                [style.width.%]="progress()!.percentage"
+              ></div>
+            </div>
+            <span class="text-xs text-text-secondary">
+              {{ progress()!.loadedVolumes }}/{{ progress()!.totalVolumes }} volumes carregados
+            </span>
+          </div>
+        </div>
+
+        <div class="p-4 flex flex-col gap-3">
+          <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+            Bipar Código
+          </label>
+          <input
+            #scanInput
+            type="text"
+            [ngModel]="code()"
+            (ngModelChange)="code.set($event)"
+            (keydown.enter)="onScan()"
+            [disabled]="isScanning()"
+            autofocus
+            class="h-14 px-4 text-lg rounded-input border-2 border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            placeholder="Aguardando leitura..."
+          />
+
+          @if (feedback(); as fb) {
+            <div
+              class="rounded-card p-3 text-sm font-bold"
+              [class.bg-success-subtle]="fb.type === 'ok'"
+              [class.text-success]="fb.type === 'ok'"
+              [class.bg-danger-subtle]="fb.type === 'error'"
+              [class.text-danger]="fb.type === 'error'"
+              [class.bg-warning-subtle]="fb.type === 'warning'"
+              [class.text-warning]="fb.type === 'warning'"
+            >
+              {{ fb.message }}
+            </div>
+          }
+        </div>
+
+        <div class="flex-1 p-4 pt-0 flex flex-col gap-3 overflow-y-auto">
+          <h2 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+            Itens do Romaneio
+          </h2>
+
+          @for (item of delivery()!.items; track item.code) {
+            <div
+              class="border border-border rounded-card p-4 flex justify-between items-center bg-bg-card"
+            >
+              <div class="flex flex-col">
+                <span class="font-bold text-text-primary">{{ item.product }}</span>
+                <span class="text-xs text-text-muted">{{ item.code || '—' }}</span>
+              </div>
+              <div class="text-right">
+                <span
+                  class="text-lg font-bold"
+                  [class.text-success]="(item.loadedQuantity ?? 0) >= (item.volumeCount ?? 1)"
+                  [class.text-warning]="
+                    (item.loadedQuantity ?? 0) > 0 &&
+                    (item.loadedQuantity ?? 0) < (item.volumeCount ?? 1)
+                  "
+                  [class.text-text-muted]="(item.loadedQuantity ?? 0) === 0"
+                >
+                  {{ item.loadedQuantity ?? 0 }}/{{ item.volumeCount ?? 1 }}
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

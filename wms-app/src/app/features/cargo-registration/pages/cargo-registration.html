@@ -425,6 +425,35 @@
     </form>
   }
 
+  @if (phase() === 'done') {
+    <div class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-4">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-success text-3xl">check_circle</span>
+        <div>
+          <h2 class="text-lg font-semibold text-text-primary">Carga concluída</h2>
+          <p class="text-sm text-text-secondary">Todos os romaneios desta carga foram gerados.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-2 border-t border-border">
+        <button
+          type="button"
+          (click)="startNewCargo()"
+          class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors"
+        >
+          Cadastrar Nova Carga
+        </button>
+        <button
+          type="button"
+          (click)="goToDashboard()"
+          class="h-10 px-6 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+        >
+          Ir para Dashboard
+        </button>
+      </div>
+    </div>
+  }
+
   <div class="bg-bg-card border border-border rounded-card overflow-hidden">
     <div class="p-4 border-b border-border">
       <h2 class="text-lg font-semibold text-text-primary">Resumo de Romaneios Gerados</h2>

@@ -18,18 +18,19 @@ export class DeliveryDetail {
   private readonly cargoService = inject(CargoService);
   private readonly fb = inject(FormBuilder);
 
-  cargo = this.cargoService.cargo;
   isSaving = signal(false);
   printMode = signal<PrintMode>(null);
 
-  private cargoId = this.route.snapshot.paramMap.get('cargoId');
-  private deliveryId = this.route.snapshot.paramMap.get('deliveryId');
+  private cargoId = this.route.snapshot.paramMap.get('cargoId')!;
+  private deliveryId = this.route.snapshot.paramMap.get('deliveryId')!;
+
+  cargo = this.cargoService.getCargoSignal(this.cargoId);
 
   originalDelivery = computed(
     () => this.cargo()?.deliveries.find((d) => d.id === this.deliveryId) ?? null,
   );
 
-  notFound = computed(() => this.cargo() === null || (!!this.cargo() && !this.originalDelivery()));
+  notFound = computed(() => this.cargo() === null || !this.originalDelivery());
 
   form = this.fb.group({
     romaneioNumber: ['', Validators.required],
@@ -66,7 +67,7 @@ export class DeliveryDetail {
     return delivery.items.flatMap((item) => {
       const total = item.volumeCount ?? 1;
       return Array.from({ length: total }, (_, i) => ({
-        destino: delivery.client.state,
+        destino: delivery.client.city,
         product: item.product,
         volumeIndex: i + 1,
         volumeTotal: total,
@@ -128,7 +129,7 @@ export class DeliveryDetail {
       })),
     };
 
-    await this.cargoService.saveDelivery(delivery);
+    await this.cargoService.saveDelivery(this.cargoId, delivery);
     this.isSaving.set(false);
   }
 

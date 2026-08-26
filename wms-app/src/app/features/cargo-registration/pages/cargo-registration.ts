@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Delivery } from '../types/cargo-registration';
 import { CargoService } from '../services/cargo-registration.service';
-import { Router } from '@angular/router';
 
 type Phase = 'config' | 'wizard' | 'done';
 
@@ -13,8 +13,8 @@ type Phase = 'config' | 'wizard' | 'done';
 })
 export class CargoRegistration {
   private readonly cargoService = inject(CargoService);
-  private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
+  private readonly fb = inject(FormBuilder);
 
   readonly steps = ['Configuração Inicial', 'Entregas', 'Resumo Final'];
 
@@ -23,7 +23,12 @@ export class CargoRegistration {
   isSaving = signal(false);
   printingDelivery = signal<Delivery | null>(null);
 
-  cargo = this.cargoService.cargo;
+  private cargoId = signal<string | null>(null);
+
+  cargo = computed(() => {
+    const id = this.cargoId();
+    return id ? this.cargoService.getCargoSignal(id)() : null;
+  });
 
   cargoConfigForm = this.fb.group({
     totalDestinations: [1, [Validators.required, Validators.min(1)]],
@@ -77,7 +82,7 @@ export class CargoRegistration {
 
     const value = this.cargoConfigForm.getRawValue();
 
-    await this.cargoService.createCargo({
+    const cargo = await this.cargoService.createCargo({
       totalDestinations: value.totalDestinations!,
       loadOrder: value.loadOrder!,
       loadDate: value.loadDate!,
@@ -89,6 +94,7 @@ export class CargoRegistration {
       assistant1: value.assistant1 || undefined,
     });
 
+    this.cargoId.set(cargo.id);
     this.phase.set('wizard');
     this.currentIndex.set(0);
     this.resetDeliveryForm();
@@ -133,7 +139,7 @@ export class CargoRegistration {
       })),
     };
 
-    await this.cargoService.saveDelivery(delivery);
+    await this.cargoService.saveDelivery(cargo.id, delivery);
 
     this.isSaving.set(false);
 
@@ -164,6 +170,16 @@ export class CargoRegistration {
   printDeliveryRomaneio(delivery: Delivery): void {
     this.printingDelivery.set(delivery);
     setTimeout(() => window.print(), 0);
+  }
+
+  goToDetail(deliveryId: string): void {
+    const cargoId = this.cargo()?.id;
+    if (!cargoId) return;
+    this.router.navigate(['/cargas', cargoId, 'entregas', deliveryId]);
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/']);
   }
 
   private createItemGroup() {
@@ -202,9 +218,21 @@ export class CargoRegistration {
     });
   }
 
-  goToDetail(deliveryId: string): void {
-    const cargoId = this.cargo()?.id;
-    if (!cargoId) return;
-    this.router.navigate(['/cargas', cargoId, 'entregas', deliveryId]);
+  startNewCargo(): void {
+    this.cargoId.set(null);
+    this.phase.set('config');
+    this.currentIndex.set(0);
+    this.printingDelivery.set(null);
+    this.cargoConfigForm.reset({
+      totalDestinations: 1,
+      loadOrder: '',
+      loadDate: '',
+      driverName: '',
+      driverPhone: '',
+      truck: '',
+      inspectionResponsible: '',
+      organizationResponsible: '',
+      assistant1: '',
+    });
   }
 }

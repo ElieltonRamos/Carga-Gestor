@@ -1,7 +1,37 @@
 <div class="max-w-5xl mx-auto p-6 flex flex-col gap-6">
-  <div>
-    <h1 class="text-2xl font-bold text-text-primary">Status do Carregamento</h1>
-    <p class="text-sm text-text-secondary">Acompanhamento geral por romaneio.</p>
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-text-primary">Status do Carregamento</h1>
+      <p class="text-sm text-text-secondary">Acompanhamento geral por romaneio.</p>
+    </div>
+    <button
+      type="button"
+      (click)="goToNewCargo()"
+      class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors"
+    >
+      Nova Carga
+    </button>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+      Data do carregamento
+    </label>
+    <input
+      type="date"
+      [value]="dateFilter()"
+      (change)="onDateChange($any($event.target).value)"
+      class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+    />
+    @if (dateFilter()) {
+      <button
+        type="button"
+        (click)="clearFilter()"
+        class="h-10 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+      >
+        Ver todas as datas
+      </button>
+    }
   </div>
 
   <div class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-3">
@@ -22,9 +52,7 @@
       ></div>
     </div>
 
-    <p class="text-xs text-text-secondary">
-      {{ overall().loadedVolumes }} de {{ overall().totalVolumes }} volumes bipados
-    </p>
+    <p class="text-xs text-text-secondary">{{ deliveryRows().length }} romaneio(s) nesta data</p>
   </div>
 
   <div class="bg-bg-card border border-border rounded-card overflow-hidden">
@@ -35,6 +63,7 @@
     <table class="w-full text-sm">
       <thead>
         <tr class="bg-bg-surface text-text-secondary text-xs uppercase tracking-wide">
+          <th class="text-left px-4 py-2 font-bold">Carga</th>
           <th class="text-left px-4 py-2 font-bold">Nº Romaneio</th>
           <th class="text-left px-4 py-2 font-bold">Cidade</th>
           <th class="text-left px-4 py-2 font-bold">Volumes</th>
@@ -44,32 +73,33 @@
         </tr>
       </thead>
       <tbody>
-        @for (progress of deliveries(); track progress.deliveryId) {
+        @for (row of deliveryRows(); track row.progress.deliveryId) {
           <tr class="border-t border-border">
-            <td class="px-4 py-3 text-text-primary">{{ progress.romaneioNumber }}</td>
-            <td class="px-4 py-3 text-text-primary">{{ progress.city }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ row.loadOrder }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ row.progress.romaneioNumber }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ row.progress.city }}</td>
             <td class="px-4 py-3 text-text-primary">
-              {{ progress.loadedVolumes }}/{{ progress.totalVolumes }}
+              {{ row.progress.loadedVolumes }}/{{ row.progress.totalVolumes }}
             </td>
             <td class="px-4 py-3">
               <div class="h-2 w-32 rounded-full bg-bg-surface overflow-hidden">
                 <div
                   class="h-full"
-                  [class.bg-success]="progress.status === 'complete'"
-                  [class.bg-warning]="progress.status === 'partial'"
-                  [class.bg-text-muted]="progress.status === 'pending'"
-                  [style.width.%]="progress.percentage"
+                  [class.bg-success]="row.progress.status === 'complete'"
+                  [class.bg-warning]="row.progress.status === 'partial'"
+                  [class.bg-text-muted]="row.progress.status === 'pending'"
+                  [style.width.%]="row.progress.percentage"
                 ></div>
               </div>
             </td>
             <td class="px-4 py-3">
-              @if (progress.status === 'complete') {
+              @if (row.progress.status === 'complete') {
                 <span
                   class="text-xs font-bold px-2 py-1 rounded-badge bg-success-subtle text-success"
                 >
                   Concluído
                 </span>
-              } @else if (progress.status === 'partial') {
+              } @else if (row.progress.status === 'partial') {
                 <span
                   class="text-xs font-bold px-2 py-1 rounded-badge bg-warning-subtle text-warning"
                 >
@@ -86,7 +116,7 @@
             <td class="px-4 py-3 text-right">
               <button
                 type="button"
-                (click)="goToScan(progress.deliveryId)"
+                (click)="goToScan(row.cargoId, row.progress.deliveryId)"
                 class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
               >
                 Bipar
@@ -95,8 +125,8 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="6" class="px-4 py-6 text-center text-text-muted">
-              Nenhum romaneio cadastrado.
+            <td colspan="7" class="px-4 py-6 text-center text-text-muted">
+              Nenhum romaneio nesta data.
             </td>
           </tr>
         }

@@ -1,4 +1,4 @@
-import { Cargo, Delivery } from "../../features/cargo-registration/types/cargo-registration";
+import { Delivery } from '../../features/cargo-registration/types/cargo-registration';
 
 export type ProgressStatus = 'pending' | 'partial' | 'complete';
 
@@ -51,12 +51,12 @@ export function computeDeliveryProgress(delivery: Delivery): DeliveryProgress {
   };
 }
 
-export function computeCargoProgress(cargo: Cargo | null): CargoProgress {
-  if (!cargo || cargo.deliveries.length === 0) {
+export function computeCargoProgress(deliveries: Delivery[]): CargoProgress {
+  if (deliveries.length === 0) {
     return { loadedVolumes: 0, totalVolumes: 0, percentage: 0, status: 'pending' };
   }
 
-  const totals = cargo.deliveries.reduce(
+  const totals = deliveries.reduce(
     (acc, delivery) => {
       const progress = computeDeliveryProgress(delivery);
       return {

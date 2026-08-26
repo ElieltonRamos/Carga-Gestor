@@ -1,139 +1,42 @@
-<div class="bg-bg-base text-text-primary min-h-screen flex flex-col">
-  <!-- Barra de ação (não sai na impressão) -->
-  <div
-    class="print:hidden flex justify-between items-center bg-bg-card p-4 border border-border rounded-lg m-6 mb-0"
-  >
-    <div>
-      <h2 class="text-xl font-semibold text-text-primary">Visualização de Impressão</h2>
-      <p class="text-sm text-text-secondary">
-        {{ packingLists().length }} romaneio(s) e etiqueta(s) para impressão.
-      </p>
-    </div>
-    <button
-      type="button"
-      (click)="print()"
-      class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors"
+<div class="hidden print:flex flex-col items-center gap-0">
+  @for (label of labels(); track label.code + '-' + label.volumeIndex) {
+    <div
+      class="print:break-after-page w-[100mm] h-[150mm] border-2 border-print-ink bg-print-bg text-print-ink flex flex-col p-4"
     >
-      Imprimir Tudo
-    </button>
-  </div>
-
-  <!-- Uma página de impressão por entrega -->
-  @for (packingList of packingLists(); track packingList.deliveryNumber; let last = $last) {
-    <div class="flex flex-col md:flex-row gap-6 p-6" [class.print:break-after-page]="!last">
-      <!-- Romaneio (A4) -->
-      <div
-        class="flex-1 bg-print-bg border border-border p-8 shadow-sm flex flex-col gap-6"
-        style="min-height: 297mm; max-width: 210mm"
-      >
-        <div class="border-b-2 border-print-ink pb-4 flex justify-between items-end">
-          <div>
-            <h3 class="text-3xl font-bold text-print-ink uppercase tracking-wide">
-              Romaneio de Carga
-            </h3>
-            <div class="text-sm text-print-ink mt-2">
-              <span class="font-bold">Data:</span> {{ packingList.date }} |
-              <span class="font-bold">Hora:</span> {{ packingList.time }}
-            </div>
-          </div>
-          <div class="text-right">
-            <div class="text-lg text-print-ink border border-print-ink px-4 py-2 mb-2 inline-block">
-              Nº Entrega {{ packingList.deliveryNumber }}
-            </div>
-            <div class="text-xl text-print-ink font-bold">Cidade: {{ packingList.city }}</div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 border border-print-ink p-4 text-sm text-print-ink">
-          <div>
-            <p><span class="font-bold">Transportadora:</span> {{ packingList.carrier }}</p>
-            <p><span class="font-bold">Placa:</span> {{ packingList.plate }}</p>
-          </div>
-          <div>
-            <p><span class="font-bold">Motorista:</span> {{ packingList.driver }}</p>
-            <p><span class="font-bold">Total Volumes:</span> {{ totalVolumes(packingList) }}</p>
-          </div>
-        </div>
-
-        <table class="w-full border-collapse text-sm text-print-ink">
-          <thead>
-            <tr class="border-b-2 border-print-ink">
-              <th class="py-2 text-left font-bold w-12">Qtd</th>
-              <th class="py-2 text-left font-bold">Produto</th>
-              <th class="py-2 text-left font-bold">Volume</th>
-              <th class="py-2 text-left font-bold">Código</th>
-              <th class="py-2 text-right font-bold">Peso</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of packingList.items; track item.code) {
-              <tr class="border-b border-print-ink">
-                <td class="py-3">{{ item.quantity }}</td>
-                <td class="py-3 font-bold">{{ item.product }}</td>
-                <td class="py-3">{{ item.volume }}</td>
-                <td class="py-3 font-mono">{{ item.code }}</td>
-                <td class="py-3 text-right">{{ item.weight ?? '—' }}kg</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-
-        <div
-          class="mt-auto border-t-2 border-print-ink pt-4 text-sm text-print-ink flex justify-between"
-        >
-          <div>Total de Itens: {{ packingList.items.length }}</div>
-          <div class="font-bold">Peso Total: {{ totalWeight(packingList) }}kg</div>
+      <div class="flex justify-between items-start border-b-2 border-print-ink pb-2 mb-2">
+        <div class="text-2xl font-black tracking-tighter">WMS</div>
+        <div class="text-right">
+          <div class="text-[10px] font-bold uppercase tracking-wide">Destino</div>
+          <div class="text-lg font-bold">{{ label.destino || '—' }}</div>
         </div>
       </div>
 
-      <!-- Etiqueta (compacta) -->
-      <div
-        class="flex-none bg-print-bg border border-border shadow-sm flex flex-col justify-center items-center p-4"
-        style="width: 100mm; height: 150mm"
-      >
-        @for (item of packingList.items.slice(0, 1); track item.code) {
-          <div class="w-full h-full border-2 border-print-ink flex flex-col p-4 bg-print-bg">
-            <div class="flex justify-between items-start border-b-2 border-print-ink pb-2 mb-2">
-              <div class="text-3xl font-black tracking-tighter text-print-ink">WMS</div>
-              <div class="text-right">
-                <div class="text-xs font-bold tracking-widest text-print-ink">DESTINO</div>
-                <div class="text-xl font-bold text-print-ink">{{ packingList.city }}</div>
-              </div>
-            </div>
+      <div class="grow flex flex-col gap-2">
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wide">Produto</div>
+          <div class="text-base font-bold leading-tight">{{ label.product }}</div>
+        </div>
 
-            <div class="grow flex flex-col gap-2">
-              <div>
-                <div class="text-xs font-bold tracking-widest text-print-ink">PRODUTO</div>
-                <div class="text-lg font-bold leading-tight text-print-ink">
-                  {{ item.product }}
-                </div>
-              </div>
-              <div class="flex justify-between mt-2 border-t border-print-ink pt-2">
-                <div>
-                  <div class="text-xs font-bold tracking-widest text-print-ink">VOLUME</div>
-                  <div class="text-xl font-bold text-print-ink">{{ item.volume }}</div>
-                </div>
-                <div class="text-right">
-                  <div class="text-xs font-bold tracking-widest text-print-ink">PESO</div>
-                  <div class="text-xl font-bold text-print-ink">{{ item.weight ?? '—' }}kg</div>
-                </div>
-              </div>
-              <div class="mt-2 border-t border-print-ink pt-2">
-                <div class="text-xs font-bold tracking-widest text-print-ink">ENTREGA</div>
-                <div class="text-base font-bold text-print-ink">
-                  Nº {{ packingList.deliveryNumber }}
-                </div>
-              </div>
-            </div>
-
-            <div class="border-t-2 border-print-ink pt-4 mt-4 flex flex-col items-center">
-              <div class="barcode mb-2 w-full h-15"></div>
-              <div class="font-mono tracking-widest text-lg font-bold text-print-ink">
-                *{{ item.code }}*
-              </div>
-            </div>
+        <div class="flex justify-between mt-2 border-t border-print-ink pt-2">
+          <div>
+            <div class="text-[10px] font-bold uppercase tracking-wide">Volume</div>
+            <div class="text-lg font-bold">{{ label.volumeIndex }}/{{ label.volumeTotal }}</div>
           </div>
-        }
+          <div class="text-right">
+            <div class="text-[10px] font-bold uppercase tracking-wide">Peso</div>
+            <div class="text-lg font-bold">{{ label.weight ?? '—' }}kg</div>
+          </div>
+        </div>
+
+        <div class="mt-2 border-t border-print-ink pt-2">
+          <div class="text-[10px] font-bold uppercase tracking-wide">Entrega</div>
+          <div class="font-bold">Nº {{ label.deliverySequence.toString().padStart(3, '0') }}</div>
+        </div>
+      </div>
+
+      <div class="border-t-2 border-print-ink pt-4 mt-4 flex flex-col items-center">
+        <div class="barcode w-full h-15 mb-2"></div>
+        <div class="tracking-widest text-lg font-bold">*{{ label.code || 'SEM-CODIGO' }}*</div>
       </div>
     </div>
   }

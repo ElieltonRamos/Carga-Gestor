@@ -1,0 +1,106 @@
+<div class="max-w-5xl mx-auto p-6 flex flex-col gap-6">
+  <div>
+    <h1 class="text-2xl font-bold text-text-primary">Status do Carregamento</h1>
+    <p class="text-sm text-text-secondary">Acompanhamento geral por romaneio.</p>
+  </div>
+
+  <div class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-3">
+    <div class="flex justify-between items-baseline">
+      <span class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+        Carga Total Carregada
+      </span>
+      <span class="text-3xl font-bold text-text-primary">{{ overall().percentage }}%</span>
+    </div>
+
+    <div class="h-3 rounded-full bg-bg-surface overflow-hidden">
+      <div
+        class="h-full transition-all duration-300"
+        [class.bg-success]="overall().status === 'complete'"
+        [class.bg-warning]="overall().status === 'partial'"
+        [class.bg-text-muted]="overall().status === 'pending'"
+        [style.width.%]="overall().percentage"
+      ></div>
+    </div>
+
+    <p class="text-xs text-text-secondary">
+      {{ overall().loadedVolumes }} de {{ overall().totalVolumes }} volumes bipados
+    </p>
+  </div>
+
+  <div class="bg-bg-card border border-border rounded-card overflow-hidden">
+    <div class="p-4 border-b border-border">
+      <h2 class="text-lg font-semibold text-text-primary">Romaneios</h2>
+    </div>
+
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-bg-surface text-text-secondary text-xs uppercase tracking-wide">
+          <th class="text-left px-4 py-2 font-bold">Nº Romaneio</th>
+          <th class="text-left px-4 py-2 font-bold">Cidade</th>
+          <th class="text-left px-4 py-2 font-bold">Volumes</th>
+          <th class="text-left px-4 py-2 font-bold">Progresso</th>
+          <th class="text-left px-4 py-2 font-bold">Status</th>
+          <th class="text-right px-4 py-2 font-bold">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (progress of deliveries(); track progress.deliveryId) {
+          <tr class="border-t border-border">
+            <td class="px-4 py-3 text-text-primary">{{ progress.romaneioNumber }}</td>
+            <td class="px-4 py-3 text-text-primary">{{ progress.city }}</td>
+            <td class="px-4 py-3 text-text-primary">
+              {{ progress.loadedVolumes }}/{{ progress.totalVolumes }}
+            </td>
+            <td class="px-4 py-3">
+              <div class="h-2 w-32 rounded-full bg-bg-surface overflow-hidden">
+                <div
+                  class="h-full"
+                  [class.bg-success]="progress.status === 'complete'"
+                  [class.bg-warning]="progress.status === 'partial'"
+                  [class.bg-text-muted]="progress.status === 'pending'"
+                  [style.width.%]="progress.percentage"
+                ></div>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              @if (progress.status === 'complete') {
+                <span
+                  class="text-xs font-bold px-2 py-1 rounded-badge bg-success-subtle text-success"
+                >
+                  Concluído
+                </span>
+              } @else if (progress.status === 'partial') {
+                <span
+                  class="text-xs font-bold px-2 py-1 rounded-badge bg-warning-subtle text-warning"
+                >
+                  Parcial
+                </span>
+              } @else {
+                <span
+                  class="text-xs font-bold px-2 py-1 rounded-badge bg-bg-surface text-text-secondary"
+                >
+                  Pendente
+                </span>
+              }
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button
+                type="button"
+                (click)="goToScan(progress.deliveryId)"
+                class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+              >
+                Bipar
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="px-4 py-6 text-center text-text-muted">
+              Nenhum romaneio cadastrado.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

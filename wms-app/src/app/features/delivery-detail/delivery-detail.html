@@ -1,0 +1,401 @@
+<div class="print:hidden max-w-6xl mx-auto p-6 flex flex-col gap-6">
+  @if (notFound()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Entrega não encontrada.
+      <button (click)="goBack()" class="text-primary underline ml-2">Voltar</button>
+    </div>
+  } @else {
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-text-primary">Detalhe da Entrega</h1>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          (click)="printRomaneio()"
+          class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+        >
+          Imprimir Romaneio
+        </button>
+        <button
+          type="button"
+          (click)="printLabels()"
+          class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+        >
+          Imprimir Etiquetas
+        </button>
+      </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
+      <form
+        [formGroup]="form"
+        (ngSubmit)="save()"
+        class="flex-1 min-w-0 bg-bg-card border border-border rounded-card p-6 flex flex-col gap-6"
+      >
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Nº Romaneio</label
+            >
+            <input
+              type="text"
+              formControlName="romaneioNumber"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Nº Licitação</label
+            >
+            <input
+              type="text"
+              formControlName="biddingNumber"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+              >Modalidade</label
+            >
+            <input
+              type="text"
+              formControlName="modality"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div formGroupName="client" class="flex flex-col gap-4 pt-4 border-t border-border">
+          <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+            Dados do Cliente
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >Nome / Razão Social</label
+              >
+              <input
+                type="text"
+                formControlName="name"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >CNPJ/CPF</label
+              >
+              <input
+                type="text"
+                formControlName="document"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2 md:col-span-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >Endereço</label
+              >
+              <input
+                type="text"
+                formControlName="address"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >Bairro</label
+              >
+              <input
+                type="text"
+                formControlName="neighborhood"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >Cidade</label
+              >
+              <input
+                type="text"
+                formControlName="city"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >Estado</label
+              >
+              <input
+                type="text"
+                maxlength="2"
+                formControlName="state"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >CEP</label
+              >
+              <input
+                type="text"
+                formControlName="zipCode"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+                >Telefone</label
+              >
+              <input
+                type="text"
+                formControlName="phone"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4 pt-4 border-t border-border">
+          <div class="flex justify-between items-center">
+            <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">Itens</h3>
+            <button
+              type="button"
+              (click)="addItem()"
+              class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+            >
+              Adicionar Item
+            </button>
+          </div>
+
+          <div formArrayName="items" class="flex flex-col gap-3">
+            @for (item of itemsControls; track item; let i = $index) {
+              <div [formGroupName]="i" class="border border-border rounded p-3 flex flex-col gap-3">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                  <div class="flex flex-col gap-1 md:col-span-1">
+                    <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                      >Código</label
+                    >
+                    <input
+                      type="text"
+                      formControlName="code"
+                      class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1 md:col-span-2">
+                    <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                      >Produto</label
+                    >
+                    <input
+                      type="text"
+                      formControlName="product"
+                      class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                      >Quantidade</label
+                    >
+                    <input
+                      type="number"
+                      formControlName="quantity"
+                      class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                      >Qtd. Volumes</label
+                    >
+                    <input
+                      type="number"
+                      formControlName="volumeCount"
+                      class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                      >Peso (kg)</label
+                    >
+                    <input
+                      type="number"
+                      formControlName="weight"
+                      class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div class="flex gap-3 items-end">
+                  <div class="flex flex-col gap-1 flex-1">
+                    <label class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                      >Observação</label
+                    >
+                    <input
+                      type="text"
+                      formControlName="notes"
+                      class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    (click)="removeItem(i)"
+                    [disabled]="itemsControls.length === 1"
+                    class="h-9 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-50"
+                  >
+                    Remover
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="flex justify-between pt-2 border-t border-border">
+          <button
+            type="button"
+            (click)="goBack()"
+            class="h-10 px-6 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+          >
+            Voltar
+          </button>
+          <button
+            type="submit"
+            [disabled]="isSaving()"
+            class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+          >
+            {{ isSaving() ? 'Salvando…' : 'Salvar Alterações' }}
+          </button>
+        </div>
+      </form>
+
+      <aside
+        class="w-full lg:w-[320px] flex-none bg-bg-card border border-border rounded-card p-4 flex flex-col gap-4"
+      >
+        <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+          Etiquetas da Entrega ({{ labels().length }})
+        </h3>
+
+        @if (labels().length === 0) {
+          <p class="text-sm text-text-muted">Nenhum item para gerar etiquetas.</p>
+        } @else {
+          <div class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
+            @for (label of labels(); track label.code + '-' + label.volumeIndex) {
+              <div class="border-2 border-border rounded p-3 flex flex-col gap-2 bg-bg-surface">
+                <div class="flex justify-between items-start border-b border-border pb-1">
+                  <div class="text-sm font-black">WMS</div>
+                  <div class="text-right">
+                    <div class="text-[9px] font-bold uppercase text-text-secondary">Destino</div>
+                    <div class="text-xs font-bold text-text-primary">
+                      {{ label.destino || '—' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-[9px] font-bold uppercase text-text-secondary">Produto</div>
+                  <div class="text-xs font-bold text-text-primary leading-tight">
+                    {{ label.product }}
+                  </div>
+                </div>
+
+                <div class="flex justify-between border-t border-border pt-1">
+                  <div>
+                    <div class="text-[9px] font-bold uppercase text-text-secondary">Volume</div>
+                    <div class="text-xs font-bold text-text-primary">
+                      {{ label.volumeIndex }}/{{ label.volumeTotal }}
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[9px] font-bold uppercase text-text-secondary">Peso</div>
+                    <div class="text-xs font-bold text-text-primary">
+                      {{ label.weight ?? '—' }}kg
+                    </div>
+                  </div>
+                </div>
+
+                <div class="border-t border-border pt-1 flex flex-col items-center">
+                  <div class="barcode w-full h-6 mb-1"></div>
+                  <div class="text-[10px] tracking-widest font-bold text-text-primary">
+                    *{{ label.code || 'SEM-CODIGO' }}*
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </aside>
+    </div>
+  }
+</div>
+
+@if (printMode() === 'romaneio' && originalDelivery(); as delivery) {
+  <div class="hidden print:flex flex-col gap-6 p-8 bg-print-bg text-print-ink">
+    <div class="border-b-2 border-print-ink pb-4 flex justify-between items-end">
+      <div>
+        <h3 class="text-3xl font-bold uppercase tracking-wide">Romaneio de Carga</h3>
+        <div class="text-sm mt-2">
+          <span class="font-bold">Nº Romaneio:</span> {{ delivery.romaneioNumber }}
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-xl font-bold">Cidade: {{ delivery.client.city }}</div>
+        @if (delivery.client.state) {
+          <div class="text-sm">{{ delivery.client.state }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 border border-print-ink p-4 text-sm">
+      <div>
+        <p><span class="font-bold">Cliente:</span> {{ delivery.client.name }}</p>
+        @if (delivery.client.document) {
+          <p><span class="font-bold">CNPJ/CPF:</span> {{ delivery.client.document }}</p>
+        }
+        @if (delivery.client.address) {
+          <p><span class="font-bold">Endereço:</span> {{ delivery.client.address }}</p>
+        }
+        @if (delivery.client.neighborhood) {
+          <p><span class="font-bold">Bairro:</span> {{ delivery.client.neighborhood }}</p>
+        }
+      </div>
+      <div>
+        @if (delivery.client.zipCode) {
+          <p><span class="font-bold">CEP:</span> {{ delivery.client.zipCode }}</p>
+        }
+        @if (delivery.client.phone) {
+          <p><span class="font-bold">Telefone:</span> {{ delivery.client.phone }}</p>
+        }
+        @if (delivery.biddingNumber) {
+          <p><span class="font-bold">Nº Licitação:</span> {{ delivery.biddingNumber }}</p>
+        }
+        @if (delivery.modality) {
+          <p><span class="font-bold">Modalidade:</span> {{ delivery.modality }}</p>
+        }
+      </div>
+    </div>
+
+    <table class="w-full border-collapse text-sm">
+      <thead>
+        <tr class="border-b-2 border-print-ink">
+          <th class="py-2 text-left font-bold">Código</th>
+          <th class="py-2 text-left font-bold">Produto</th>
+          <th class="py-2 text-right font-bold">Qtd</th>
+          <th class="py-2 text-right font-bold">Volumes</th>
+          <th class="py-2 text-right font-bold">Peso</th>
+          <th class="py-2 text-left font-bold">Observação</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of delivery.items; track item.code) {
+          <tr class="border-b border-print-ink">
+            <td class="py-2">{{ item.code || '—' }}</td>
+            <td class="py-2 font-bold">{{ item.product }}</td>
+            <td class="py-2 text-right">{{ item.quantity }}</td>
+            <td class="py-2 text-right">{{ item.volumeCount ?? '—' }}</td>
+            <td class="py-2 text-right">{{ item.weight ?? '—' }}kg</td>
+            <td class="py-2">{{ item.notes || '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+@if (printMode() === 'etiquetas') {
+  <app-packing-label [labels]="labels()" />
+}

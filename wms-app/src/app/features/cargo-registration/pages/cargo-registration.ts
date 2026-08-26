@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Delivery } from '../types/cargo-registration';
 import { CargoService } from '../services/cargo-registration.service';
+import { Router } from '@angular/router';
 
 type Phase = 'config' | 'wizard' | 'done';
 
@@ -13,6 +14,7 @@ type Phase = 'config' | 'wizard' | 'done';
 export class CargoRegistration {
   private readonly cargoService = inject(CargoService);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
 
   readonly steps = ['Configuração Inicial', 'Entregas', 'Resumo Final'];
 
@@ -198,5 +200,11 @@ export class CargoRegistration {
         phone: '',
       },
     });
+  }
+
+  goToDetail(deliveryId: string): void {
+    const cargoId = this.cargo()?.id;
+    if (!cargoId) return;
+    this.router.navigate(['/cargas', cargoId, 'entregas', deliveryId]);
   }
 }

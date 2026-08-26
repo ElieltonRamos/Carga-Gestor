@@ -463,6 +463,13 @@
               >
                 Romaneio
               </button>
+              <button
+                type="button"
+                (click)="goToDetail(delivery.id)"
+                class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs ml-2"
+              >
+                Detalhes
+              </button>
             </td>
           </tr>
         } @empty {

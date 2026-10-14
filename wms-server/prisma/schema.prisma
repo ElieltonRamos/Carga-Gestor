@@ -31,11 +31,23 @@ enum ScanResult {
 }
 
 model Company {
-  id        Int      @id @default(autoincrement())
-  name      String
-  document  String?
-  settings  Json?
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                Int      @id @default(autoincrement())
+  cnpj              String
+  name              String
+  tradeName         String?  @map("trade_name")
+  stateRegistration String?  @map("state_registration")
+  phone             String?
+  street            String?
+  streetNumber      String?  @map("street_number")
+  neighborhood      String?
+  city              String?
+  state             String?  @db.Char(2)
+  zipCode           String?  @map("zip_code")
+  licenseKey        String?  @map("license_key")
+  licenseToken      String?  @map("license_token") @db.Text
+  settings          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("companies")
 }

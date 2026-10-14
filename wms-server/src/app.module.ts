@@ -1,8 +1,13 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { join } from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { UsersModule } from './features/users/users.module';
+import { LicenseSystemModule } from './features/license-system/license-system.module';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtAuthGuard } from './core/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -10,8 +15,15 @@ import { ServeStaticModule } from '@nestjs/serve-static';
       rootPath: join(process.cwd(), 'public', 'dist', 'frontend', 'browser'),
       exclude: ['/api/{*splat}', '/swagger/{*splat}'],
     }),
+    JwtModule.register({
+      global: true,
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '12h' },
+    }),
+    UsersModule,
+    LicenseSystemModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}

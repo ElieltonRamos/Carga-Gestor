@@ -1,0 +1,165 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  CHECKER
+}
+
+enum CargoStatus {
+  OPEN
+  LOADING
+  DEPARTED
+}
+
+enum DeliveryStatus {
+  GENERATED
+}
+
+enum ScanResult {
+  OK
+  ERROR
+  WARNING
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  document  String?
+  settings  Json?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("companies")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  username      String    @unique
+  passwordHash  String    @map("password_hash")
+  role          UserRole  @default(OPERATOR)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  scans         ScanLog[]
+  volumesLoaded Volume[]
+
+  @@map("users")
+}
+
+model Client {
+  id           Int        @id @default(autoincrement())
+  name         String
+  document     String?    @unique
+  address      String?
+  neighborhood String?
+  city         String
+  state        String?    @db.Char(2)
+  zipCode      String?    @map("zip_code")
+  phone        String?
+  deliveries   Delivery[]
+
+  @@map("clients")
+}
+
+model Cargo {
+  id                      Int         @id @default(autoincrement())
+  loadOrder               String      @unique @map("load_order")
+  totalDestinations       Int         @map("total_destinations")
+  status                  CargoStatus @default(OPEN)
+  loadDate                DateTime    @map("load_date") @db.Date
+  issueDate               DateTime    @map("issue_date") @db.Date
+  driverName              String?     @map("driver_name")
+  driverPhone             String?     @map("driver_phone")
+  truck                   String?
+  inspectionResponsible   String?     @map("inspection_responsible")
+  organizationResponsible String?     @map("organization_responsible")
+  assistant1              String?     @map("assistant_1")
+  loadingResponsible      String?     @map("loading_responsible")
+  warehouseKeeper         String?     @map("warehouse_keeper")
+  romaneioResponsible     String?     @map("romaneio_responsible")
+  startedAt               DateTime?   @map("started_at")
+  endedAt                 DateTime?   @map("ended_at")
+  departedAt              DateTime?   @map("departed_at")
+  createdAt               DateTime    @default(now()) @map("created_at")
+  updatedAt               DateTime    @updatedAt @map("updated_at")
+  deliveries              Delivery[]
+
+  @@map("cargos")
+}
+
+model Delivery {
+  id              Int            @id @default(autoincrement())
+  cargoId         Int            @map("cargo_id")
+  clientId        Int            @map("client_id")
+  sequence        Int
+  romaneioNumber  String         @unique @map("romaneio_number")
+  biddingNumber   String?        @map("bidding_number")
+  modality        String?
+  hasInstallation Boolean        @default(false) @map("has_installation")
+  status          DeliveryStatus @default(GENERATED)
+  cargo           Cargo          @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  client          Client         @relation(fields: [clientId], references: [id])
+  items           DeliveryItem[]
+
+  @@unique([cargoId, sequence])
+  @@index([clientId])
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id          Int      @id @default(autoincrement())
+  deliveryId  Int      @map("delivery_id")
+  code        String?
+  product     String
+  quantity    Int
+  volumeCount Int?     @map("volume_count")
+  weight      Decimal? @db.Decimal(10, 3)
+  notes       String?  @db.Text
+  delivery    Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  volumes     Volume[]
+
+  @@index([deliveryId])
+  @@map("delivery_items")
+}
+
+model Volume {
+  id             Int          @id @default(autoincrement())
+  deliveryItemId Int          @map("delivery_item_id")
+  number         Int
+  code           String       @unique
+  loaded         Boolean      @default(false)
+  loadedAt       DateTime?    @map("loaded_at")
+  loadedById     Int?         @map("loaded_by_id")
+  deliveryItem   DeliveryItem @relation(fields: [deliveryItemId], references: [id], onDelete: Cascade)
+  loadedBy       User?        @relation(fields: [loadedById], references: [id])
+  scans          ScanLog[]
+
+  @@unique([deliveryItemId, number])
+  @@index([loadedById])
+  @@map("volumes")
+}
+
+model ScanLog {
+  id        Int        @id @default(autoincrement())
+  code      String
+  result    ScanResult
+  volumeId  Int?       @map("volume_id")
+  userId    Int        @map("user_id")
+  createdAt DateTime   @default(now()) @map("created_at")
+  volume    Volume?    @relation(fields: [volumeId], references: [id], onDelete: SetNull)
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([volumeId])
+  @@index([userId])
+  @@index([code])
+  @@map("scan_logs")
+}

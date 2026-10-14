@@ -298,7 +298,7 @@ export class UsersService {
         throw new UnauthorizedException('Credenciais inválidas');
       }
 
-      // Licença inválida já é logada dentro de validate()
+      // Licença inválida já é logada dentro de validate() depois descomentar
       // const license = await this.licenseService.validate(username);
       // if (!license.isValid) {
       //   throw new UnauthorizedException(

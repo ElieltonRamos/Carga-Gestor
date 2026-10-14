@@ -50,17 +50,13 @@ increment_version() {
 
 MODIFIED_DIRS=$(git diff HEAD~1 HEAD --name-only | cut -d'/' -f1 | sort -u)
 
-# Incrementa versão do frontend se houver mudanças
-if echo "$MODIFIED_DIRS" | grep -q "^frontend$"; then
-  increment_version "frontend/package.json"
-  git add frontend/package.json
-fi
-
-# Incrementa versão do backend se houver mudanças
-if echo "$MODIFIED_DIRS" | grep -q "^backend$"; then
-  increment_version "backend/package.json"
-  git add backend/package.json
-fi
+# Incrementa versão de cada pasta modificada que tenha package.json
+for DIR in frontend backend wms-app wms-server; do
+  if echo "$MODIFIED_DIRS" | grep -qx "$DIR" && [ -f "$DIR/package.json" ]; then
+    increment_version "$DIR/package.json"
+    git add "$DIR/package.json"
+  fi
+done
 
 # Commit das mudanças se houver alguma
 if git diff --cached --quiet; then

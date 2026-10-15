@@ -11,3 +11,25 @@ export const ValidationMessages = {
   IS_ENUM: (field: string) => `${field} inválido`,
   IS_BOOLEAN: (field: string) => `${field} deve ser verdadeiro ou falso`,
 };
+
+export const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
+
+// String vazia vira null, para limpar um campo opcional
+export const trimOrNull = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+};
+
+export const digitsOrNull = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const onlyDigits = value.replace(/\D/g, '');
+  return onlyDigits === '' ? null : onlyDigits;
+};
+
+export const upperOrNull = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const upper = value.trim().toUpperCase();
+  return upper === '' ? null : upper;
+};

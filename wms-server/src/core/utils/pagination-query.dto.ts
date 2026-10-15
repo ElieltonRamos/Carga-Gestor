@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { ValidationMessages } from '../utils/validation';
 
 export class PaginationQueryDto {
   @ApiPropertyOptional({
@@ -11,8 +12,8 @@ export class PaginationQueryDto {
   })
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'A página deve ser um número inteiro' })
-  @Min(1, { message: 'A página deve ser no mínimo $constraint1' })
+  @IsInt({ message: ValidationMessages.IS_INT('A página') })
+  @Min(1, { message: ValidationMessages.MIN('A página', 1) })
   page: number = 1;
 
   @ApiPropertyOptional({
@@ -24,8 +25,8 @@ export class PaginationQueryDto {
   })
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'O limite deve ser um número inteiro' })
-  @Min(1, { message: 'O limite deve ser no mínimo $constraint1' })
-  @Max(100, { message: 'O limite deve ser no máximo $constraint1' })
+  @IsInt({ message: ValidationMessages.IS_INT('O limite') })
+  @Min(1, { message: ValidationMessages.MIN('O limite', 1) })
+  @Max(100, { message: ValidationMessages.MAX('O limite', 100) })
   limit: number = 10;
 }

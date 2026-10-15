@@ -8,31 +8,14 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
-
-const trim = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
-
-// String vazia vira null, para limpar um campo opcional
-const trimOrNull = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-};
-
-const digits = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.replace(/\D/g, '') : value;
-
-const digitsOrNull = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const onlyDigits = value.replace(/\D/g, '');
-  return onlyDigits === '' ? null : onlyDigits;
-};
-
-const upperOrNull = ({ value }: { value: unknown }) => {
-  if (typeof value !== 'string') return value;
-  const upper = value.trim().toUpperCase();
-  return upper === '' ? null : upper;
-};
+import {
+  digits,
+  digitsOrNull,
+  trim,
+  trimOrNull,
+  upperOrNull,
+  ValidationMessages,
+} from '../../../core/utils/validation';
 
 export class UpdateCompanyDto {
   @ApiPropertyOptional({
@@ -41,52 +24,72 @@ export class UpdateCompanyDto {
   })
   @ValidateIf((o: UpdateCompanyDto) => o.cnpj !== undefined)
   @Transform(digits)
-  @Matches(/^\d{14}$/, { message: 'O CNPJ deve ter 14 dígitos' })
+  @Matches(/^\d{14}$/, {
+    message: ValidationMessages.EXACT_DIGITS('O CNPJ', 14),
+  })
   cnpj?: string;
 
   @ApiPropertyOptional({ description: 'Razão social', example: 'Empresa LTDA' })
   @ValidateIf((o: UpdateCompanyDto) => o.name !== undefined)
   @Transform(trim)
-  @IsString({ message: 'A razão social deve ser um texto' })
-  @IsNotEmpty({ message: 'A razão social não pode ser vazia' })
+  @IsString({ message: ValidationMessages.IS_STRING('A razão social') })
+  @IsNotEmpty({ message: ValidationMessages.IS_NOT_BLANK('A razão social') })
   @MaxLength(191, {
-    message: 'A razão social deve ter no máximo $constraint1 caracteres',
+    message: ValidationMessages.MAX_LENGTH('A razão social', 191),
   })
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Nome fantasia', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Nome fantasia',
+    example: 'Empresa',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O nome fantasia deve ser um texto' })
+  @IsString({ message: ValidationMessages.IS_STRING('O nome fantasia') })
   @MaxLength(191, {
-    message: 'O nome fantasia deve ter no máximo $constraint1 caracteres',
+    message: ValidationMessages.MAX_LENGTH('O nome fantasia', 191),
   })
   tradeName?: string | null;
 
-  @ApiPropertyOptional({ description: 'Inscrição estadual', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Inscrição estadual',
+    example: '123456789',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'A inscrição estadual deve ser um texto' })
+  @IsString({ message: ValidationMessages.IS_STRING('A inscrição estadual') })
   @MaxLength(20, {
-    message: 'A inscrição estadual deve ter no máximo $constraint1 caracteres',
+    message: ValidationMessages.MAX_LENGTH('A inscrição estadual', 20),
   })
   stateRegistration?: string | null;
 
-  @ApiPropertyOptional({ description: 'Telefone', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Telefone',
+    example: '(38) 99999-9999',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O telefone deve ser um texto' })
-  @MaxLength(20, {
-    message: 'O telefone deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('O telefone') })
+  @MaxLength(20, { message: ValidationMessages.MAX_LENGTH('O telefone', 20) })
   phone?: string | null;
 
-  @ApiPropertyOptional({ description: 'Logradouro', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Logradouro',
+    example: 'Rua das Flores',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O logradouro deve ser um texto' })
+  @IsString({ message: ValidationMessages.IS_STRING('O logradouro') })
   @MaxLength(191, {
-    message: 'O logradouro deve ter no máximo $constraint1 caracteres',
+    message: ValidationMessages.MAX_LENGTH('O logradouro', 191),
   })
   street?: string | null;
 
@@ -94,37 +97,43 @@ export class UpdateCompanyDto {
     description: 'Número',
     example: '123',
     nullable: true,
+    type: String,
   })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O número deve ser um texto' })
-  @MaxLength(20, {
-    message: 'O número deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('O número') })
+  @MaxLength(20, { message: ValidationMessages.MAX_LENGTH('O número', 20) })
   streetNumber?: string | null;
 
-  @ApiPropertyOptional({ description: 'Bairro', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Bairro',
+    example: 'Centro',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O bairro deve ser um texto' })
-  @MaxLength(191, {
-    message: 'O bairro deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('O bairro') })
+  @MaxLength(191, { message: ValidationMessages.MAX_LENGTH('O bairro', 191) })
   neighborhood?: string | null;
 
-  @ApiPropertyOptional({ description: 'Cidade', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Cidade',
+    example: 'Espinosa',
+    nullable: true,
+    type: String,
+  })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'A cidade deve ser um texto' })
-  @MaxLength(191, {
-    message: 'A cidade deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('A cidade') })
+  @MaxLength(191, { message: ValidationMessages.MAX_LENGTH('A cidade', 191) })
   city?: string | null;
 
   @ApiPropertyOptional({
     description: 'UF com 2 letras',
     example: 'MG',
     nullable: true,
+    type: String,
   })
   @IsOptional()
   @Transform(upperOrNull)
@@ -135,9 +144,10 @@ export class UpdateCompanyDto {
     description: 'CEP (aceita máscara, é salvo só com os 8 dígitos)',
     example: '39400000',
     nullable: true,
+    type: String,
   })
   @IsOptional()
   @Transform(digitsOrNull)
-  @Matches(/^\d{8}$/, { message: 'O CEP deve ter 8 dígitos' })
+  @Matches(/^\d{8}$/, { message: ValidationMessages.EXACT_DIGITS('O CEP', 8) })
   zipCode?: string | null;
 }

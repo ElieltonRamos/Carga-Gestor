@@ -13,7 +13,8 @@ import {
   trim,
   trimOrNull,
   upperOrNull,
-} from '../../../core/utils/validation-messages';
+  ValidationMessages,
+} from '../../../core/utils/validation';
 
 export class UpdateClientDto {
   @ApiPropertyOptional({
@@ -22,11 +23,9 @@ export class UpdateClientDto {
   })
   @ValidateIf((o: UpdateClientDto) => o.name !== undefined)
   @Transform(trim)
-  @IsString({ message: 'O nome deve ser um texto' })
-  @IsNotEmpty({ message: 'O nome não pode ser vazio' })
-  @MaxLength(191, {
-    message: 'O nome deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('O nome') })
+  @IsNotEmpty({ message: ValidationMessages.IS_NOT_BLANK('O nome') })
+  @MaxLength(191, { message: ValidationMessages.MAX_LENGTH('O nome', 191) })
   name?: string;
 
   @ApiPropertyOptional({
@@ -50,9 +49,9 @@ export class UpdateClientDto {
   })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O endereço deve ser um texto' })
+  @IsString({ message: ValidationMessages.IS_STRING('O endereço') })
   @MaxLength(191, {
-    message: 'O endereço deve ter no máximo $constraint1 caracteres',
+    message: ValidationMessages.MAX_LENGTH('O endereço', 191),
   })
   address?: string | null;
 
@@ -64,20 +63,16 @@ export class UpdateClientDto {
   })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O bairro deve ser um texto' })
-  @MaxLength(191, {
-    message: 'O bairro deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('O bairro') })
+  @MaxLength(191, { message: ValidationMessages.MAX_LENGTH('O bairro', 191) })
   neighborhood?: string | null;
 
   @ApiPropertyOptional({ description: 'Cidade', example: 'Espinosa' })
   @ValidateIf((o: UpdateClientDto) => o.city !== undefined)
   @Transform(trim)
-  @IsString({ message: 'A cidade deve ser um texto' })
-  @IsNotEmpty({ message: 'A cidade não pode ser vazia' })
-  @MaxLength(191, {
-    message: 'A cidade deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('A cidade') })
+  @IsNotEmpty({ message: ValidationMessages.IS_NOT_BLANK('A cidade') })
+  @MaxLength(191, { message: ValidationMessages.MAX_LENGTH('A cidade', 191) })
   city?: string;
 
   @ApiPropertyOptional({
@@ -99,7 +94,7 @@ export class UpdateClientDto {
   })
   @IsOptional()
   @Transform(digitsOrNull)
-  @Matches(/^\d{8}$/, { message: 'O CEP deve ter 8 dígitos' })
+  @Matches(/^\d{8}$/, { message: ValidationMessages.EXACT_DIGITS('O CEP', 8) })
   zipCode?: string | null;
 
   @ApiPropertyOptional({
@@ -110,9 +105,7 @@ export class UpdateClientDto {
   })
   @IsOptional()
   @Transform(trimOrNull)
-  @IsString({ message: 'O telefone deve ser um texto' })
-  @MaxLength(20, {
-    message: 'O telefone deve ter no máximo $constraint1 caracteres',
-  })
+  @IsString({ message: ValidationMessages.IS_STRING('O telefone') })
+  @MaxLength(20, { message: ValidationMessages.MAX_LENGTH('O telefone', 20) })
   phone?: string | null;
 }

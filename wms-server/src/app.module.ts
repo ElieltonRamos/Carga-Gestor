@@ -8,6 +8,7 @@ import { UsersModule } from './features/users/users.module';
 import { LicenseSystemModule } from './features/license-system/license-system.module';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from './core/guards/jwt-auth.guard';
+import { CompanyModule } from './features/company/company.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from './core/guards/jwt-auth.guard';
     }),
     UsersModule,
     LicenseSystemModule,
+    CompanyModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

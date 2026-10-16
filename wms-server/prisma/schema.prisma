@@ -109,18 +109,26 @@ model Cargo {
 }
 
 model Delivery {
-  id              Int            @id @default(autoincrement())
-  cargoId         Int            @map("cargo_id")
-  clientId        Int            @map("client_id")
-  sequence        Int
-  romaneioNumber  String         @unique @map("romaneio_number")
-  biddingNumber   String?        @map("bidding_number")
-  modality        String?
-  hasInstallation Boolean        @default(false) @map("has_installation")
-  status          DeliveryStatus @default(GENERATED)
-  cargo           Cargo          @relation(fields: [cargoId], references: [id], onDelete: Cascade)
-  client          Client         @relation(fields: [clientId], references: [id])
-  items           DeliveryItem[]
+  id                 Int            @id @default(autoincrement())
+  cargoId            Int            @map("cargo_id")
+  sequence           Int
+  romaneioNumber     String         @unique @map("romaneio_number")
+  biddingNumber      String?        @map("bidding_number")
+  modality           String?
+  hasInstallation    Boolean        @default(false) @map("has_installation")
+  status             DeliveryStatus @default(GENERATED)
+  cargo              Cargo          @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  items              DeliveryItem[]
+  clientId           Int?           @map("client_id")
+  clientName         String         @map("client_name")
+  clientDocument     String?        @map("client_document")
+  clientAddress      String?        @map("client_address")
+  clientNeighborhood String?        @map("client_neighborhood")
+  clientCity         String         @map("client_city")
+  clientState        String?        @map("client_state") @db.Char(2)
+  clientZipCode      String?        @map("client_zip_code")
+  clientPhone        String?        @map("client_phone")
+  client             Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@unique([cargoId, sequence])
   @@index([clientId])

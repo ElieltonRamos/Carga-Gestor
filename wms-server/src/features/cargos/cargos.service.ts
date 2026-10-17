@@ -16,6 +16,7 @@ import { CargoDeliveryDto, CargoItemDto } from './dto/cargo-delivery.dto';
 import { CargoResponseDto } from './dto/cargo-response.dto';
 import { CargoListItemDto } from './dto/cargo-list-item.dto';
 import { PaginatedResponseDto } from '../../core/utils/paginated-response.js';
+import { lockCargoRow } from './cargo-lock.js';
 
 const HEADER_FIELDS = [
   'loadDate',
@@ -93,7 +94,7 @@ const toSnapshot = (c: ClientData) => ({
   clientPhone: c.phone ?? null,
 });
 
-// Campos estruturais: só mudam com a carga OPEN e sem volumes carregados
+// Campos do romaneio e do item, sem o snapshot do cliente e as observações
 const deliveryFields = (d: CargoDeliveryDto) => ({
   romaneioNumber: d.romaneioNumber,
   biddingNumber: d.biddingNumber ?? null,
@@ -388,20 +389,14 @@ export class CargosService {
     return changedFields(next, current);
   }
 
-  // Também valida que os ids enviados pertencem à carga
-  private hasStructuralChange(
+  // Valida que os ids enviados pertencem à carga
+  private assertOwnership(
     cargo: CargoWithRelations,
     incoming: CargoDeliveryDto[],
     actor: string,
-  ): boolean {
-    let structural = false;
-    const keptIds = new Set<number>();
-
+  ): void {
     for (const input of incoming) {
-      if (input.id === undefined) {
-        structural = true;
-        continue;
-      }
+      if (input.id === undefined) continue;
       const current = cargo.deliveries.find((d) => d.id === input.id);
       if (!current) {
         this.logger.warn(
@@ -409,72 +404,56 @@ export class CargosService {
         );
         throw new BadRequestException('Romaneio não pertence a esta carga');
       }
-      keptIds.add(current.id);
-
-      if (Object.keys(changedFields(deliveryFields(input), current)).length) {
-        structural = true;
-      }
-      if (this.itemsStructureChanged(current, input.items, actor)) {
-        structural = true;
-      }
-    }
-
-    if (cargo.deliveries.some((d) => !keptIds.has(d.id))) structural = true;
-    return structural;
-  }
-
-  private itemsStructureChanged(
-    delivery: DeliveryWithItems,
-    items: CargoItemDto[],
-    actor: string,
-  ): boolean {
-    let structural = false;
-    const keptIds = new Set<number>();
-
-    for (const input of items) {
-      if (input.id === undefined) {
-        structural = true;
-        continue;
-      }
-      const current = delivery.items.find((i) => i.id === input.id);
-      if (!current) {
-        this.logger.warn(
-          `Item não pertence ao romaneio (actor=${actor}, deliveryId=${delivery.id}, itemId=${input.id})`,
-        );
-        throw new BadRequestException('Item não pertence a este romaneio');
-      }
-      keptIds.add(current.id);
-
-      if (Object.keys(changedFields(itemFields(input), current)).length) {
-        structural = true;
+      for (const item of input.items) {
+        if (
+          item.id !== undefined &&
+          !current.items.some((i) => i.id === item.id)
+        ) {
+          this.logger.warn(
+            `Item não pertence ao romaneio (actor=${actor}, deliveryId=${current.id}, itemId=${item.id})`,
+          );
+          throw new BadRequestException('Item não pertence a este romaneio');
+        }
       }
     }
-
-    if (delivery.items.some((i) => !keptIds.has(i.id))) structural = true;
-    return structural;
   }
 
-  private async assertStructureEditable(
-    cargo: CargoWithRelations,
+  // Volumes carregados não podem ser removidos pela edição: o estorno vem antes
+  private async assertNoLoadedVolumes(
+    tx: Prisma.TransactionClient,
+    where: Prisma.VolumeWhereInput,
+    message: string,
+    cargoId: number,
     actor: string,
   ): Promise<void> {
-    if (cargo.status !== CargoStatus.OPEN) {
-      this.logger.warn(
-        `Edição estrutural bloqueada, carga não está aberta (actor=${actor}, id=${cargo.id}, status=${cargo.status})`,
-      );
-      throw new ConflictException(
-        'A ordem de carga, os romaneios, os itens e os volumes só podem ser alterados com a carga aberta',
-      );
-    }
-    const { loaded } = await this.volumeTotals(cargo.id);
+    const loaded = await tx.volume.count({ where: { ...where, loaded: true } });
     if (loaded > 0) {
       this.logger.warn(
-        `Edição estrutural bloqueada, há volumes carregados (actor=${actor}, id=${cargo.id}, carregados=${loaded})`,
+        `Alteração bloqueada, há volumes carregados (actor=${actor}, cargoId=${cargoId}, carregados=${loaded})`,
       );
-      throw new ConflictException(
-        'Não é possível alterar a estrutura de uma carga com volumes já carregados',
-      );
+      throw new ConflictException(message);
     }
+  }
+
+  // Mantém o endedAt coerente com a estrutura: limpa se a carga deixou de estar
+  // completa e preenche se passou a estar
+  private async syncEndedAt(
+    tx: Prisma.TransactionClient,
+    cargoId: number,
+    current: { status: CargoStatus; endedAt: Date | null },
+    changes: Record<string, unknown>,
+  ): Promise<void> {
+    if (current.status !== CargoStatus.LOADING) return;
+
+    const where: Prisma.VolumeWhereInput = {
+      deliveryItem: { delivery: { cargoId } },
+    };
+    const total = await tx.volume.count({ where });
+    const loaded = await tx.volume.count({ where: { ...where, loaded: true } });
+    const complete = total > 0 && loaded === total;
+
+    if (complete && current.endedAt === null) changes.endedAt = new Date();
+    else if (!complete && current.endedAt !== null) changes.endedAt = null;
   }
 
   // Sincroniza romaneios e itens pelo id, preservando ids (e portanto os códigos das etiquetas)
@@ -493,6 +472,13 @@ export class CargosService {
       .filter((d) => !keptIds.has(d.id))
       .map((d) => d.id);
     if (removedIds.length) {
+      await this.assertNoLoadedVolumes(
+        tx,
+        { deliveryItem: { deliveryId: { in: removedIds } } },
+        'Não é possível remover um romaneio com volumes já carregados. Estorne os volumes antes',
+        cargo.id,
+        actor,
+      );
       await tx.delivery.deleteMany({ where: { id: { in: removedIds } } });
       touched.add('romaneios');
     }
@@ -593,6 +579,13 @@ export class CargosService {
           ),
         );
       } else if (newTotal < oldTotal) {
+        await this.assertNoLoadedVolumes(
+          tx,
+          { deliveryItemId: item.id, number: { gt: newTotal } },
+          'Não é possível reduzir a quantidade de volumes com volumes já carregados. Estorne os volumes antes',
+          cargoId,
+          actor,
+        );
         await tx.volume.deleteMany({
           where: { deliveryItemId: item.id, number: { gt: newTotal } },
         });
@@ -604,6 +597,13 @@ export class CargosService {
       .filter((i) => !keptItemIds.has(i.id))
       .map((i) => i.id);
     if (removedItemIds.length) {
+      await this.assertNoLoadedVolumes(
+        tx,
+        { deliveryItemId: { in: removedItemIds } },
+        'Não é possível remover um item com volumes já carregados. Estorne os volumes antes',
+        cargoId,
+        actor,
+      );
       await tx.deliveryItem.deleteMany({
         where: { id: { in: removedItemIds } },
       });
@@ -791,21 +791,13 @@ export class CargosService {
 
       const changes = this.headerChanges(cargo, dto);
 
-      const loadOrderChanged =
-        dto.loadOrder !== undefined && dto.loadOrder !== cargo.loadOrder;
-      if (loadOrderChanged) changes.loadOrder = dto.loadOrder;
-
-      const structural =
-        loadOrderChanged ||
-        (dto.deliveries !== undefined &&
-          this.hasStructuralChange(cargo, dto.deliveries, actor));
-
-      if (structural) await this.assertStructureEditable(cargo, actor);
-
-      if (loadOrderChanged) {
-        await this.assertLoadOrderAvailable(dto.loadOrder as string, actor, id);
+      if (dto.loadOrder !== undefined && dto.loadOrder !== cargo.loadOrder) {
+        await this.assertLoadOrderAvailable(dto.loadOrder, actor, id);
+        changes.loadOrder = dto.loadOrder;
       }
+
       if (dto.deliveries !== undefined) {
+        this.assertOwnership(cargo, dto.deliveries, actor);
         await this.assertRomaneiosAvailable(
           dto.deliveries.map((d) => d.romaneioNumber),
           actor,
@@ -825,8 +817,25 @@ export class CargosService {
 
       const touched = new Set<string>();
       const updated = await this.prisma.client.$transaction(async (tx) => {
+        await lockCargoRow(tx, id);
+
+        // Releitura após o lock: a carga pode ter sido expedida ou bipada nesse intervalo
+        const fresh = await tx.cargo.findUniqueOrThrow({
+          where: { id },
+          select: { status: true, endedAt: true },
+        });
+        if (fresh.status === CargoStatus.DEPARTED) {
+          this.logger.warn(
+            `Edição bloqueada, carga já expedida (actor=${actor}, id=${id})`,
+          );
+          throw new ConflictException(
+            'Uma carga expedida não pode ser editada',
+          );
+        }
+
         if (dto.deliveries !== undefined) {
           await this.applyDeliveries(tx, cargo, dto.deliveries, touched, actor);
+          await this.syncEndedAt(tx, id, fresh, changes);
         }
         if (Object.keys(changes).length) {
           await tx.cargo.update({

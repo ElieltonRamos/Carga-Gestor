@@ -80,6 +80,23 @@ export class CargoListItemDto {
   @ApiProperty({ description: 'Volumes já carregados', example: 10 })
   loadedVolumes: number;
 
+  @ApiProperty({
+    description: 'Id do usuário que expediu a carga',
+    nullable: true,
+    type: Number,
+    example: 3,
+  })
+  departedById: number | null;
+
+  @ApiProperty({
+    description:
+      'Volumes que ficaram de fora na expedição. 0 é expedição completa; nulo se a carga não foi expedida',
+    nullable: true,
+    type: Number,
+    example: 2,
+  })
+  pendingAtDeparture: number | null;
+
   constructor(partial: Partial<CargoListItemDto>) {
     Object.assign(this, partial);
   }

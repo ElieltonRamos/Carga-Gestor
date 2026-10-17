@@ -25,3 +25,17 @@ export function resolveLogicalDateTime(): Date {
 
   return now;
 }
+
+// Datas @db.Date são gravadas e comparadas em UTC, sem hora
+export const dateOnly = (value: string) => new Date(`${value}T00:00:00.000Z`);
+
+export const todayInSaoPaulo = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(
+    new Date(),
+  );
+
+// Período em dias (AAAA-MM-DD) no fuso America/Sao_Paulo (-03:00, sem horário de verão)
+export const dayRange = (from?: string, to?: string) => ({
+  gte: from ? new Date(`${from}T00:00:00.000-03:00`) : undefined,
+  lte: to ? new Date(`${to}T23:59:59.999-03:00`) : undefined,
+});

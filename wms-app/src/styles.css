@@ -23,6 +23,15 @@
   --color-text-muted: #737685;
   --color-text-inverse: #ffffff;
 
+  /* ── Login ── */
+  --color-login-page-bg-from: #e8edff;
+  --color-login-page-bg-to: #f9f9ff;
+  --color-login-panel-bg: rgba(255, 255, 255, 0.7);
+  --color-login-panel-border: #c3c6d6;
+
+  /* ── Texto ── */
+  --color-text-disabled: #9a9dac;
+
   /* ── Primária ── */
   --color-primary: #003d9b;
   --color-primary-dark: #0040a2;
@@ -88,6 +97,15 @@
   --color-text-muted: #8e8e93;
   --color-text-inverse: #121212;
 
+  /* Login */
+  --color-login-page-bg-from: #262628;
+  --color-login-page-bg-to: #121212;
+  --color-login-panel-bg: rgba(28, 28, 30, 0.7);
+  --color-login-panel-border: #3a3a3c;
+
+  /* Texto */
+  --color-text-disabled: #5c5c5e;
+
   /* Primária */
   --color-primary: #6a9bff;
   --color-primary-dark: #4a80f0;
@@ -108,7 +126,7 @@
   /* Botões */
   --color-btn-primary-bg: var(--color-primary);
   --color-btn-primary-hover: var(--color-primary-hover);
-  --color-btn-primary-text: #0a0a0a;
+  --color-btn-primary-text: #ffffff;
   --color-btn-secondary-bg: var(--color-bg-surface-high);
   --color-btn-secondary-hover: var(--color-bg-surface-highest);
   --color-btn-secondary-text: var(--color-text-primary);

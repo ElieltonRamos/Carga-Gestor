@@ -28,6 +28,14 @@ enum ScanResult {
   OK
   ERROR
   WARNING
+  UNDO
+}
+
+enum ScanReason {
+  NOT_FOUND
+  ALREADY_LOADED
+  WRONG_CARGO
+  CARGO_DEPARTED
 }
 
 model Company {
@@ -53,16 +61,17 @@ model Company {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  name          String
-  username      String    @unique
-  passwordHash  String    @map("password_hash")
-  role          UserRole  @default(OPERATOR)
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  scans         ScanLog[]
-  volumesLoaded Volume[]
+  id             Int       @id @default(autoincrement())
+  name           String
+  username       String    @unique
+  passwordHash   String    @map("password_hash")
+  role           UserRole  @default(OPERATOR)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  scans          ScanLog[]
+  departedCargos Cargo[]
+  volumesLoaded  Volume[]
 
   @@map("users")
 }
@@ -103,7 +112,11 @@ model Cargo {
   departedAt              DateTime?   @map("departed_at")
   createdAt               DateTime    @default(now()) @map("created_at")
   updatedAt               DateTime    @updatedAt @map("updated_at")
+  departedById            Int?        @map("departed_by_id")
+  pendingAtDeparture      Int?        @map("pending_at_departure")
+  departedBy              User?       @relation(fields: [departedById], references: [id])
   deliveries              Delivery[]
+  scans                   ScanLog[]
 
   @@map("cargos")
 }
@@ -178,6 +191,12 @@ model ScanLog {
   volume    Volume?    @relation(fields: [volumeId], references: [id], onDelete: SetNull)
   user      User       @relation(fields: [userId], references: [id])
 
+  reason  ScanReason?
+  cargoId Int?        @map("cargo_id")
+  device  String?
+  cargo   Cargo?      @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+
+  @@index([cargoId])
   @@index([volumeId])
   @@index([userId])
   @@index([code])

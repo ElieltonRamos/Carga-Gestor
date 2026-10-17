@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './core/guards/jwt-auth.guard';
 import { CompanyModule } from './features/company/company.module';
 import { ClientsModule } from './features/clients/clients.module';
 import { CargosModule } from './features/cargos/cargos.module';
+import { ScanModule } from './features/scan/scan.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CargosModule } from './features/cargos/cargos.module';
     CompanyModule,
     ClientsModule,
     CargosModule,
+    ScanModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

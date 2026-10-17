@@ -4,10 +4,15 @@ import { LoadingDashboard } from './features/loading-dashboard/loading-dashboard
 import { DeliveryDetail } from './features/delivery-detail/delivery-detail';
 import { ScanDelivery } from './features/scan-check/pages/scan-check';
 import { CargoOverview } from './features/cargo-overview/cargo-overview';
+import { Login } from './features/login/pages/login';
 
 export const routes: Routes = [
   {
     path: '',
+    component: Login,
+  },
+  {
+    path: 'cargas',
     component: CargoOverview,
   },
   {

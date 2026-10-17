@@ -69,20 +69,25 @@ export class Login {
           next: (info) => {
             localStorage.setItem('licensePlan', info.plan);
           },
+          error: () => {
+            this.notification.error('Não foi possível carregar as informações da licença');
+          },
         });
-
         this.notification.success(`Bem Vindo! 👋`);
         this.form.reset();
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/cargas']);
       },
       error: (err) => {
-          closeLoading();
+        closeLoading();
         localStorage.removeItem('token');
 
         if (err.status === 0 || err.status === 500) {
           this.notification.error('Servidor indisponível');
         } else {
-          this.notification.error(err.error?.message || 'Credenciais inválidas');
+          const msg = err.error?.message;
+          this.notification.error(
+            Array.isArray(msg) ? msg.join(', ') : msg || 'Credenciais inválidas',
+          );
         }
         this.form.reset();
       },

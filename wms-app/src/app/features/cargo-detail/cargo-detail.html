@@ -1,0 +1,625 @@
+<div class="max-w-5xl mx-auto p-6 flex flex-col gap-6">
+  @if (loading()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Carregando…
+    </div>
+  } @else if (notFound()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Carga não encontrada.
+      <button (click)="goBack()" class="text-primary underline ml-2">Voltar</button>
+    </div>
+  } @else {
+    <div class="flex justify-between items-start gap-4">
+      <div>
+        <button type="button" (click)="goBack()" class="text-text-secondary text-sm mb-1">
+          ← Acompanhamento de Carga
+        </button>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-bold text-text-primary">{{ cargo()!.loadOrder }}</h1>
+          <span
+            class="text-xs font-bold px-2 py-1 rounded-badge"
+            [class.bg-bg-surface]="cargo()!.status === 'OPEN'"
+            [class.text-text-secondary]="cargo()!.status === 'OPEN'"
+            [class.bg-warning-subtle]="cargo()!.status === 'LOADING'"
+            [class.text-warning]="cargo()!.status === 'LOADING'"
+            [class.bg-success-subtle]="cargo()!.status === 'DEPARTED'"
+            [class.text-success]="cargo()!.status === 'DEPARTED'"
+          >
+            {{ statusLabel() }}
+          </span>
+        </div>
+        <p class="text-sm text-text-secondary">
+          {{ cargo()!.loadDate | date: 'dd/MM/yyyy' : 'UTC' }} · Motorista:
+          {{ cargo()!.driverName || '—' }}
+        </p>
+        @if (cargo()!.status === 'DEPARTED' && cargo()!.departedAt) {
+          <p class="text-xs text-text-secondary">
+            Expedida em {{ cargo()!.departedAt | date: 'dd/MM/yyyy HH:mm' }}
+            @if (cargo()!.pendingAtDeparture) {
+              · {{ cargo()!.pendingAtDeparture }} volume(s) ficaram de fora
+            }
+          </p>
+        }
+      </div>
+
+      <div class="flex gap-2">
+        @if (canEdit() && !editing()) {
+          <button
+            type="button"
+            (click)="openEdit()"
+            [disabled]="isActing()"
+            class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+          >
+            Editar
+          </button>
+        }
+        @if (canDepart()) {
+          <button
+            type="button"
+            (click)="openAction('depart')"
+            [disabled]="isActing()"
+            class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+          >
+            Expedir
+          </button>
+        }
+        @if (canReopen()) {
+          <button
+            type="button"
+            (click)="openAction('reopen')"
+            [disabled]="isActing()"
+            class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+          >
+            Reabrir
+          </button>
+        }
+        @if (canRemove()) {
+          <button
+            type="button"
+            (click)="openAction('remove')"
+            [disabled]="isActing()"
+            class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+          >
+            Excluir
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (editing()) {
+      <form
+        [formGroup]="editForm"
+        (ngSubmit)="saveEdit()"
+        class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-4"
+      >
+        <h2 class="text-lg font-semibold text-text-primary">Editar carga</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Ordem do carregamento
+            </label>
+            <input
+              type="text"
+              maxlength="191"
+              formControlName="loadOrder"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Data do carregamento
+            </label>
+            <input
+              type="date"
+              formControlName="loadDate"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Data de emissão
+            </label>
+            <input
+              type="date"
+              formControlName="issueDate"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
+          @for (field of optionalFields; track field.control) {
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                {{ field.label }}
+              </label>
+              <input
+                type="text"
+                [attr.maxlength]="field.maxlength"
+                [formControlName]="field.control"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-border">
+          <button
+            type="button"
+            (click)="cancelEdit()"
+            [disabled]="isActing()"
+            class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="isActing()"
+            class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+          >
+            {{ isActing() ? 'Salvando…' : 'Salvar Alterações' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (action(); as current) {
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        @switch (current) {
+          @case ('depart') {
+            <p class="text-sm text-text-primary">
+              @if (pendingVolumes() > 0) {
+                Há {{ pendingVolumes() }} volume(s) ainda não carregados. Eles ficarão de fora da
+                expedição. Expedir mesmo assim?
+              } @else {
+                Confirmar a expedição desta carga?
+              }
+            </p>
+          }
+          @case ('reopen') {
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Motivo da reabertura
+            </label>
+            <textarea
+              rows="3"
+              maxlength="500"
+              [value]="reason()"
+              (input)="reason.set($any($event.target).value)"
+              class="px-3 py-2 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+            ></textarea>
+          }
+          @case ('remove') {
+            <p class="text-sm text-text-primary">
+              Excluir esta carga definitivamente, com romaneios, itens e volumes? Esta ação não pode
+              ser desfeita.
+            </p>
+          }
+        }
+
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            (click)="cancelAction()"
+            [disabled]="isActing()"
+            class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="confirmAction()"
+            [disabled]="!canConfirm() || isActing()"
+            class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+          >
+            {{ isActing() ? 'Aguarde…' : 'Confirmar' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (errorMessage(); as message) {
+      <div class="rounded border border-border bg-bg-surface p-3 text-sm text-danger">
+        {{ message }}
+      </div>
+    }
+
+    <div class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-3">
+      <div class="flex justify-between items-baseline">
+        <span class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+          Carga Total Carregada
+        </span>
+        <span class="text-3xl font-bold text-text-primary">{{ overall().percentage }}%</span>
+      </div>
+
+      <div class="h-3 rounded-full bg-bg-surface overflow-hidden">
+        <div
+          class="h-full transition-all duration-300"
+          [class.bg-success]="overall().status === 'complete'"
+          [class.bg-warning]="overall().status === 'partial'"
+          [class.bg-text-muted]="overall().status === 'pending'"
+          [style.width.%]="overall().percentage"
+        ></div>
+      </div>
+
+      <p class="text-xs text-text-secondary">
+        {{ deliveryRows().length }} romaneio(s) · {{ overall().loaded }}/{{ overall().total }}
+        volumes
+      </p>
+    </div>
+
+    <div class="bg-bg-card border border-border rounded-card overflow-hidden">
+      <div class="p-4 border-b border-border flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-text-primary">Romaneios</h2>
+        @if (canEdit() && !addingDelivery()) {
+          <button
+            type="button"
+            (click)="openAddDelivery()"
+            [disabled]="isActing()"
+            class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-60"
+          >
+            Adicionar Romaneio
+          </button>
+        }
+      </div>
+
+      @if (deliveryError(); as message) {
+        <div class="m-4 rounded border border-border bg-bg-surface p-3 text-sm text-danger">
+          {{ message }}
+        </div>
+      }
+
+      @if (addingDelivery()) {
+        <form
+          [formGroup]="deliveryForm"
+          (ngSubmit)="saveNewDelivery()"
+          class="p-4 border-b border-border flex flex-col gap-4"
+        >
+          <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+            Novo romaneio
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                Nº Romaneio
+              </label>
+              <input
+                type="text"
+                maxlength="191"
+                formControlName="romaneioNumber"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                Nº Licitação
+              </label>
+              <input
+                type="text"
+                maxlength="191"
+                formControlName="biddingNumber"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                Modalidade
+              </label>
+              <input
+                type="text"
+                maxlength="191"
+                formControlName="modality"
+                class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="newHasInstallation"
+              formControlName="hasInstallation"
+              class="h-4 w-4"
+            />
+            <label for="newHasInstallation" class="text-sm text-text-primary">Instalação</label>
+          </div>
+
+          <div formGroupName="client" class="flex flex-col gap-4 pt-4 border-t border-border">
+            <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
+              Dados do Cliente
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              @for (field of clientFields; track field.control) {
+                <div
+                  [class]="field.wide ? 'flex flex-col gap-2 md:col-span-2' : 'flex flex-col gap-2'"
+                >
+                  <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                    {{ field.label }}
+                  </label>
+                  <input
+                    type="text"
+                    [attr.maxlength]="field.maxlength"
+                    [formControlName]="field.control"
+                    class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+                  />
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4 pt-4 border-t border-border">
+            <div class="flex justify-between items-center">
+              <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">Itens</h3>
+              <button
+                type="button"
+                (click)="addItem()"
+                class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+              >
+                Adicionar Item
+              </button>
+            </div>
+
+            <div formArrayName="items" class="flex flex-col gap-3">
+              @for (item of itemsControls; track item; let i = $index) {
+                <div
+                  [formGroupName]="i"
+                  class="border border-border rounded p-3 flex flex-col gap-3"
+                >
+                  <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                    <div class="flex flex-col gap-1">
+                      <label
+                        class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                        >Código</label
+                      >
+                      <input
+                        type="text"
+                        maxlength="191"
+                        formControlName="code"
+                        class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                      />
+                    </div>
+                    <div class="flex flex-col gap-1 md:col-span-2">
+                      <label
+                        class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                        >Produto</label
+                      >
+                      <input
+                        type="text"
+                        maxlength="191"
+                        formControlName="product"
+                        class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                      />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label
+                        class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                        >Quantidade</label
+                      >
+                      <input
+                        type="number"
+                        formControlName="quantity"
+                        class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                      />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label
+                        class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                        >Qtd. Volumes</label
+                      >
+                      <input
+                        type="number"
+                        formControlName="volumeCount"
+                        class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                      />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label
+                        class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                        >Peso (kg)</label
+                      >
+                      <input
+                        type="number"
+                        formControlName="weight"
+                        class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div class="flex gap-3 items-end">
+                    <div class="flex flex-col gap-1 flex-1">
+                      <label
+                        class="text-[10px] font-bold tracking-wide text-text-secondary uppercase"
+                        >Observação</label
+                      >
+                      <input
+                        type="text"
+                        formControlName="notes"
+                        class="h-9 px-2 rounded-input border border-input-border bg-input-bg text-input-text text-sm focus:border-input-border-focus focus:outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="removeItem(i)"
+                      [disabled]="itemsControls.length === 1"
+                      class="h-9 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-50"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-border">
+            <button
+              type="button"
+              (click)="cancelAddDelivery()"
+              [disabled]="isActing()"
+              class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="isActing()"
+              class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+            >
+              {{ isActing() ? 'Salvando…' : 'Adicionar Romaneio' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-bg-surface text-text-secondary text-xs uppercase tracking-wide">
+            <th class="text-left px-4 py-2 font-bold">Nº Romaneio</th>
+            <th class="text-left px-4 py-2 font-bold">Cidade</th>
+            <th class="text-left px-4 py-2 font-bold">Volumes</th>
+            <th class="text-left px-4 py-2 font-bold">Progresso</th>
+            <th class="text-left px-4 py-2 font-bold">Status</th>
+            <th class="text-right px-4 py-2 font-bold">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of deliveryRows(); track row.delivery.id) {
+            <tr
+              class="border-t border-border cursor-pointer hover:bg-bg-hover transition-colors"
+              (click)="toggleExpand(row.delivery.id)"
+            >
+              <td class="px-4 py-3 text-text-primary">{{ row.delivery.romaneioNumber }}</td>
+              <td class="px-4 py-3 text-text-primary">{{ row.delivery.clientCity }}</td>
+              <td class="px-4 py-3 text-text-primary">
+                {{ row.progress.loaded }}/{{ row.progress.total }}
+              </td>
+              <td class="px-4 py-3">
+                <div class="h-2 w-32 rounded-full bg-bg-surface overflow-hidden">
+                  <div
+                    class="h-full"
+                    [class.bg-success]="row.progress.status === 'complete'"
+                    [class.bg-warning]="row.progress.status === 'partial'"
+                    [class.bg-text-muted]="row.progress.status === 'pending'"
+                    [style.width.%]="row.progress.percentage"
+                  ></div>
+                </div>
+              </td>
+              <td class="px-4 py-3">
+                @if (row.progress.status === 'complete') {
+                  <span
+                    class="text-xs font-bold px-2 py-1 rounded-badge bg-success-subtle text-success"
+                  >
+                    Concluído
+                  </span>
+                } @else if (row.progress.status === 'partial') {
+                  <span
+                    class="text-xs font-bold px-2 py-1 rounded-badge bg-warning-subtle text-warning"
+                  >
+                    Parcial
+                  </span>
+                } @else {
+                  <span
+                    class="text-xs font-bold px-2 py-1 rounded-badge bg-bg-surface text-text-secondary"
+                  >
+                    Pendente
+                  </span>
+                }
+              </td>
+              <td class="px-4 py-3 text-right">
+                @if (deliveryToRemove()?.id === row.delivery.id) {
+                  <span class="text-xs text-text-secondary mr-2">Remover este romaneio?</span>
+                  <button
+                    type="button"
+                    (click)="confirmRemoveDelivery(); $event.stopPropagation()"
+                    [disabled]="isActing()"
+                    class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-60"
+                  >
+                    Sim
+                  </button>
+                  <button
+                    type="button"
+                    (click)="cancelRemoveDelivery(); $event.stopPropagation()"
+                    [disabled]="isActing()"
+                    class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs ml-2 disabled:opacity-60"
+                  >
+                    Não
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="goToDetail(row.delivery.id); $event.stopPropagation()"
+                    class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+                  >
+                    Ver Detalhes
+                  </button>
+                  @if (canRemoveDelivery(row.delivery)) {
+                    <button
+                      type="button"
+                      (click)="askRemoveDelivery(row.delivery); $event.stopPropagation()"
+                      [disabled]="isActing()"
+                      class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs ml-2 disabled:opacity-60"
+                    >
+                      Remover
+                    </button>
+                  }
+                }
+              </td>
+            </tr>
+
+            @if (isExpanded(row.delivery.id)) {
+              <tr class="border-t border-border bg-bg-surface-low">
+                <td colspan="6" class="px-4 py-4">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-xs font-bold uppercase tracking-wide text-success">
+                        Já no Caminhão
+                      </h3>
+                      @for (entry of row.loadedItems; track entry.item.id) {
+                        <div
+                          class="bg-bg-card border border-border rounded p-2 flex justify-between text-sm"
+                        >
+                          <span class="text-text-primary">{{ entry.item.product }}</span>
+                          <span class="font-bold text-success">
+                            {{ entry.progress.loaded }}/{{ entry.progress.total }}
+                          </span>
+                        </div>
+                      } @empty {
+                        <p class="text-xs text-text-muted">Nenhum item carregado ainda.</p>
+                      }
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                      <h3 class="text-xs font-bold uppercase tracking-wide text-warning">
+                        Falta Carregar
+                      </h3>
+                      @for (entry of row.pendingItems; track entry.item.id) {
+                        <div
+                          class="bg-bg-card border border-border rounded p-2 flex justify-between text-sm"
+                        >
+                          <span class="text-text-primary">{{ entry.item.product }}</span>
+                          <span class="font-bold text-warning">
+                            {{ entry.progress.loaded }}/{{ entry.progress.total }}
+                          </span>
+                        </div>
+                      } @empty {
+                        <p class="text-xs text-text-muted">Tudo carregado.</p>
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          } @empty {
+            <tr>
+              <td colspan="6" class="px-4 py-6 text-center text-text-muted">
+                Nenhum romaneio nesta carga.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

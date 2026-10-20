@@ -1,15 +1,20 @@
 import { Injectable } from '@angular/core';
 
+export type UserRole = 'ADMIN' | 'OPERATOR' | 'CHECKER';
+
 export default interface User {
-  id?: string;
+  id: number;
+  name: string;
+  username: string;
+  role: UserRole;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoginDto {
   username: string;
   password: string;
-  workplace: string;
-  role?: string;
-  active?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date | null;
 }
 
 export interface Token {
@@ -20,50 +25,43 @@ export interface Token {
 export interface TokenPayload {
   userId: number;
   username: string;
-  role: string;
-  companyId: number;
-  doctorId?: number;
+  role: UserRole;
   iat: number;
   exp: number;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  isValidToken(token: string): boolean {
-    if (!token) return false;
-
+  private decode(token: string): TokenPayload | null {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const now = Math.floor(Date.now() / 1000);
-      return payload.exp > now + 60;
-    } catch {
-      return false;
-    }
-  }
-
-  hasRole(token: string, role: string): boolean {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.role === role;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  isAuthenticated(): boolean {
-    const token = localStorage.getItem('token');
-    return this.isValidToken(token || '');
-  }
-
-  getTokenPayload(token?: string): TokenPayload | null {
-    token = token || localStorage.getItem('token') || '';
-
-    if (!token) return null;
-
-    try {
-      return JSON.parse(atob(token.split('.')[1]));
+      const part = token.split('.')[1];
+      if (!part) return null;
+      const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      return JSON.parse(new TextDecoder().decode(bytes));
     } catch {
       return null;
     }
+  }
+
+  isValidToken(token: string): boolean {
+    const payload = this.decode(token);
+    return (
+      !!payload &&
+      typeof payload.exp === 'number' &&
+      payload.exp > Math.floor(Date.now() / 1000) + 60
+    );
+  }
+
+  hasRole(token: string, role: UserRole): boolean {
+    return this.decode(token)?.role === role;
+  }
+
+  isAuthenticated(): boolean {
+    return this.isValidToken(localStorage.getItem('token') ?? '');
+  }
+
+  getTokenPayload(token?: string): TokenPayload | null {
+    return this.decode(token ?? localStorage.getItem('token') ?? '');
   }
 }

@@ -1,5 +1,9 @@
 <div class="max-w-5xl mx-auto p-6 flex flex-col gap-6">
-  @if (notFound()) {
+  @if (loading()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Carregando…
+    </div>
+  } @else if (notFound()) {
     <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
       Carga não encontrada.
       <button (click)="goBack()" class="text-primary underline ml-2">Voltar</button>
@@ -12,7 +16,8 @@
         </button>
         <h1 class="text-2xl font-bold text-text-primary">{{ cargo()!.loadOrder }}</h1>
         <p class="text-sm text-text-secondary">
-          {{ cargo()!.loadDate }} · Motorista: {{ cargo()!.driverName || '—' }}
+          {{ cargo()!.loadDate | date: 'dd/MM/yyyy' : 'UTC' }} · Motorista:
+          {{ cargo()!.driverName || '—' }}
         </p>
       </div>
     </div>
@@ -35,7 +40,10 @@
         ></div>
       </div>
 
-      <p class="text-xs text-text-secondary">{{ deliveryRows().length }} romaneio(s) nesta carga</p>
+      <p class="text-xs text-text-secondary">
+        {{ deliveryRows().length }} romaneio(s) · {{ overall().loaded }}/{{ overall().total }}
+        volumes
+      </p>
     </div>
 
     <div class="bg-bg-card border border-border rounded-card overflow-hidden">
@@ -60,10 +68,10 @@
               class="border-t border-border cursor-pointer hover:bg-bg-hover transition-colors"
               (click)="toggleExpand(row.delivery.id)"
             >
-              <td class="px-4 py-3 text-text-primary">{{ row.progress.romaneioNumber }}</td>
-              <td class="px-4 py-3 text-text-primary">{{ row.progress.city }}</td>
+              <td class="px-4 py-3 text-text-primary">{{ row.delivery.romaneioNumber }}</td>
+              <td class="px-4 py-3 text-text-primary">{{ row.delivery.clientCity }}</td>
               <td class="px-4 py-3 text-text-primary">
-                {{ row.progress.loadedVolumes }}/{{ row.progress.totalVolumes }}
+                {{ row.progress.loaded }}/{{ row.progress.total }}
               </td>
               <td class="px-4 py-3">
                 <div class="h-2 w-32 rounded-full bg-bg-surface overflow-hidden">
@@ -123,17 +131,15 @@
                       <h3 class="text-xs font-bold uppercase tracking-wide text-success">
                         Já no Caminhão
                       </h3>
-                      @for (item of row.delivery.items; track item.code) {
-                        @if (itemStatus(item.loadedQuantity, item.volumeCount) === 'loaded') {
-                          <div
-                            class="bg-bg-card border border-border rounded p-2 flex justify-between text-sm"
-                          >
-                            <span class="text-text-primary">{{ item.product }}</span>
-                            <span class="font-bold text-success">
-                              {{ item.loadedQuantity ?? 0 }}/{{ item.volumeCount ?? 1 }}
-                            </span>
-                          </div>
-                        }
+                      @for (entry of row.loadedItems; track entry.item.id) {
+                        <div
+                          class="bg-bg-card border border-border rounded p-2 flex justify-between text-sm"
+                        >
+                          <span class="text-text-primary">{{ entry.item.product }}</span>
+                          <span class="font-bold text-success">
+                            {{ entry.progress.loaded }}/{{ entry.progress.total }}
+                          </span>
+                        </div>
                       } @empty {
                         <p class="text-xs text-text-muted">Nenhum item carregado ainda.</p>
                       }
@@ -143,17 +149,15 @@
                       <h3 class="text-xs font-bold uppercase tracking-wide text-warning">
                         Falta Carregar
                       </h3>
-                      @for (item of row.delivery.items; track item.code) {
-                        @if (itemStatus(item.loadedQuantity, item.volumeCount) === 'pending') {
-                          <div
-                            class="bg-bg-card border border-border rounded p-2 flex justify-between text-sm"
-                          >
-                            <span class="text-text-primary">{{ item.product }}</span>
-                            <span class="font-bold text-warning">
-                              {{ item.loadedQuantity ?? 0 }}/{{ item.volumeCount ?? 1 }}
-                            </span>
-                          </div>
-                        }
+                      @for (entry of row.pendingItems; track entry.item.id) {
+                        <div
+                          class="bg-bg-card border border-border rounded p-2 flex justify-between text-sm"
+                        >
+                          <span class="text-text-primary">{{ entry.item.product }}</span>
+                          <span class="font-bold text-warning">
+                            {{ entry.progress.loaded }}/{{ entry.progress.total }}
+                          </span>
+                        </div>
                       } @empty {
                         <p class="text-xs text-text-muted">Tudo carregado.</p>
                       }

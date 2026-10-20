@@ -1,64 +1,76 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { CargoService } from '../cargo-registration/services/cargo-registration.service';
-import {
-  computeCargoProgress,
-  computeDeliveryProgress,
-} from '../../shared/utils/delivery-progress';
+import { computeVolumeProgress } from '../../shared/utils/volume-progress';
+import { CargosService } from '../cargo-overview/services/cargos.service';
+import { Cargo, CargoItem } from '../cargo-overview/types/cargo';
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-loading-dashboard',
-  imports: [],
+  imports: [DatePipe],
   templateUrl: './loading-dashboard.html',
 })
 export class LoadingDashboard {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly cargoService = inject(CargoService);
+  private readonly cargosService = inject(CargosService);
 
-  private cargoId = this.route.snapshot.paramMap.get('cargoId')!;
+  private readonly cargoId = Number(this.route.snapshot.paramMap.get('cargoId'));
 
-  expandedDeliveryId = signal<string | null>(null);
+  loading = signal(true);
+  cargo = signal<Cargo | null>(null);
+  expandedDeliveryId = signal<number | null>(null);
 
-  cargo = this.cargoService.getCargoSignal(this.cargoId);
+  notFound = computed(() => !this.loading() && this.cargo() === null);
 
-  notFound = computed(() => this.cargo() === null);
+  overall = computed(() => computeVolumeProgress(this.cargo() ?? {}));
 
-  overall = computed(() => computeCargoProgress(this.cargo()?.deliveries ?? []));
+  constructor() {
+    this.cargosService.findOne(this.cargoId).subscribe({
+      next: (cargo) => {
+        this.cargo.set(cargo);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
 
-  deliveryRows = computed(() =>
-    (this.cargo()?.deliveries ?? []).map((delivery) => ({
-      delivery,
-      progress: computeDeliveryProgress(delivery),
-    })),
-  );
-
-  toggleExpand(deliveryId: string): void {
+  toggleExpand(deliveryId: number): void {
     this.expandedDeliveryId.set(this.expandedDeliveryId() === deliveryId ? null : deliveryId);
   }
 
-  isExpanded(deliveryId: string): boolean {
+  isExpanded(deliveryId: number): boolean {
     return this.expandedDeliveryId() === deliveryId;
   }
 
-  itemStatus(
-    loadedQuantity: number | undefined,
-    volumeCount: number | undefined,
-  ): 'loaded' | 'pending' {
-    const total = volumeCount ?? 1;
-    const loaded = loadedQuantity ?? 0;
-    return loaded >= total ? 'loaded' : 'pending';
+  itemProgress(item: CargoItem) {
+    return computeVolumeProgress({
+      totalVolumes: item.totalVolumes ?? item.volumeCount ?? 1,
+      loadedVolumes: item.loadedVolumes,
+    });
   }
 
-  goToScan(deliveryId: string): void {
+  goToScan(deliveryId: number): void {
     this.router.navigate(['/conferencia', this.cargoId, deliveryId]);
   }
 
   goBack(): void {
-    this.router.navigate(['/']);
+    this.router.navigate(['/cargas']);
   }
 
-  goToDetail(deliveryId: string): void {
+  goToDetail(deliveryId: number): void {
     this.router.navigate(['/cargas', this.cargoId, 'entregas', deliveryId]);
   }
+
+  deliveryRows = computed(() =>
+    (this.cargo()?.deliveries ?? []).map((delivery) => {
+      const items = delivery.items.map((item) => ({ item, progress: this.itemProgress(item) }));
+      return {
+        delivery,
+        progress: computeVolumeProgress(delivery),
+        loadedItems: items.filter((i) => i.progress.status === 'complete'),
+        pendingItems: items.filter((i) => i.progress.status !== 'complete'),
+      };
+    }),
+  );
 }

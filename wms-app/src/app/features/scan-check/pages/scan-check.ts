@@ -76,6 +76,6 @@ export class ScanDelivery {
   }
 
   goBack(): void {
-    this.router.navigate(['/']);
+    this.router.navigate(['/cargas']);
   }
 }

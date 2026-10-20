@@ -1,5 +1,9 @@
 <div class="print:hidden max-w-6xl mx-auto p-6 flex flex-col gap-6">
-  @if (notFound()) {
+  @if (loading()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Carregando…
+    </div>
+  } @else if (notFound()) {
     <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
       Entrega não encontrada.
       <button (click)="goBack()" class="text-primary underline ml-2">Voltar</button>
@@ -159,7 +163,8 @@
             <button
               type="button"
               (click)="addItem()"
-              class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+              [disabled]="isLocked()"
+              class="h-8 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-50"
             >
               Adicionar Item
             </button>
@@ -234,7 +239,7 @@
                   <button
                     type="button"
                     (click)="removeItem(i)"
-                    [disabled]="itemsControls.length === 1"
+                    [disabled]="itemsControls.length === 1 || isLocked()"
                     class="h-9 px-3 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs disabled:opacity-50"
                   >
                     Remover
@@ -244,6 +249,18 @@
             }
           </div>
         </div>
+
+        @if (isLocked()) {
+          <div class="rounded border border-border bg-bg-surface p-3 text-sm text-text-secondary">
+            Carga expedida: edição bloqueada. Reabra a carga para editar.
+          </div>
+        }
+
+        @if (errorMessage(); as message) {
+          <div class="rounded border border-border bg-bg-surface p-3 text-sm text-danger">
+            {{ message }}
+          </div>
+        }
 
         <div class="flex justify-between pt-2 border-t border-border">
           <button
@@ -255,7 +272,7 @@
           </button>
           <button
             type="submit"
-            [disabled]="isSaving()"
+            [disabled]="isSaving() || isLocked()"
             class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
           >
             {{ isSaving() ? 'Salvando…' : 'Salvar Alterações' }}
@@ -274,7 +291,7 @@
           <p class="text-sm text-text-muted">Nenhum item para gerar etiquetas.</p>
         } @else {
           <div class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
-            @for (label of labels(); track label.code + '-' + label.volumeIndex) {
+            @for (label of labels(); track label.code) {
               <div class="border-2 border-border rounded p-3 flex flex-col gap-2 bg-bg-surface">
                 <div class="flex justify-between items-start border-b border-border pb-1">
                   <div class="text-sm font-black">WMS</div>
@@ -333,32 +350,32 @@
         </div>
       </div>
       <div class="text-right">
-        <div class="text-xl font-bold">Cidade: {{ delivery.client.city }}</div>
-        @if (delivery.client.state) {
-          <div class="text-sm">{{ delivery.client.state }}</div>
+        <div class="text-xl font-bold">Cidade: {{ delivery.clientCity }}</div>
+        @if (delivery.clientState) {
+          <div class="text-sm">{{ delivery.clientState }}</div>
         }
       </div>
     </div>
 
     <div class="grid grid-cols-2 gap-4 border border-print-ink p-4 text-sm">
       <div>
-        <p><span class="font-bold">Cliente:</span> {{ delivery.client.name }}</p>
-        @if (delivery.client.document) {
-          <p><span class="font-bold">CNPJ/CPF:</span> {{ delivery.client.document }}</p>
+        <p><span class="font-bold">Cliente:</span> {{ delivery.clientName }}</p>
+        @if (delivery.clientDocument) {
+          <p><span class="font-bold">CNPJ/CPF:</span> {{ delivery.clientDocument }}</p>
         }
-        @if (delivery.client.address) {
-          <p><span class="font-bold">Endereço:</span> {{ delivery.client.address }}</p>
+        @if (delivery.clientAddress) {
+          <p><span class="font-bold">Endereço:</span> {{ delivery.clientAddress }}</p>
         }
-        @if (delivery.client.neighborhood) {
-          <p><span class="font-bold">Bairro:</span> {{ delivery.client.neighborhood }}</p>
+        @if (delivery.clientNeighborhood) {
+          <p><span class="font-bold">Bairro:</span> {{ delivery.clientNeighborhood }}</p>
         }
       </div>
       <div>
-        @if (delivery.client.zipCode) {
-          <p><span class="font-bold">CEP:</span> {{ delivery.client.zipCode }}</p>
+        @if (delivery.clientZipCode) {
+          <p><span class="font-bold">CEP:</span> {{ delivery.clientZipCode }}</p>
         }
-        @if (delivery.client.phone) {
-          <p><span class="font-bold">Telefone:</span> {{ delivery.client.phone }}</p>
+        @if (delivery.clientPhone) {
+          <p><span class="font-bold">Telefone:</span> {{ delivery.clientPhone }}</p>
         }
         @if (delivery.biddingNumber) {
           <p><span class="font-bold">Nº Licitação:</span> {{ delivery.biddingNumber }}</p>
@@ -381,7 +398,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (item of delivery.items; track item.code) {
+        @for (item of delivery.items; track item.id) {
           <tr class="border-b border-print-ink">
             <td class="py-2">{{ item.code || '—' }}</td>
             <td class="py-2 font-bold">{{ item.product }}</td>

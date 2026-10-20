@@ -26,6 +26,12 @@ export class CargoItemResponseDto {
 
   @ApiProperty({ nullable: true, type: String })
   notes: string | null;
+
+  @ApiProperty({ description: 'Total de volumes', example: 2 })
+  totalVolumes: number;
+
+  @ApiProperty({ description: 'Volumes já carregados', example: 1 })
+  loadedVolumes: number;
 }
 
 export class CargoDeliveryResponseDto {
@@ -91,6 +97,12 @@ export class CargoDeliveryResponseDto {
 
   @ApiProperty({ type: [CargoItemResponseDto] })
   items: CargoItemResponseDto[];
+
+  @ApiProperty({ description: 'Total de volumes', example: 2 })
+  totalVolumes: number;
+
+  @ApiProperty({ description: 'Volumes já carregados', example: 1 })
+  loadedVolumes: number;
 }
 
 export class CargoResponseDto extends CargoListItemDto {

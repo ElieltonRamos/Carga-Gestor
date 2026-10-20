@@ -37,6 +37,8 @@ export interface CargoItem {
   volumeCount: number | null;
   weight: number | null;
   notes: string | null;
+  totalVolumes?: number;
+  loadedVolumes?: number;
 }
 
 export interface CargoDelivery {
@@ -58,6 +60,8 @@ export interface CargoDelivery {
   clientZipCode: string | null;
   clientPhone: string | null;
   items: CargoItem[];
+  totalVolumes?: number;
+  loadedVolumes?: number;
 }
 
 export interface Cargo extends CargoListItem {

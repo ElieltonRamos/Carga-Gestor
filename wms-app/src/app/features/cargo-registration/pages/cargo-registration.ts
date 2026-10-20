@@ -219,7 +219,7 @@ export class CargoRegistration {
   }
 
   goToDashboard(): void {
-    this.router.navigate(['/']);
+    this.router.navigate(['/cargas']);
   }
 
   startNewCargo(): void {

@@ -32,7 +32,9 @@ const HEADER_FIELDS = [
   'romaneioResponsible',
 ] as const;
 
+type VolumeCounts = { totalVolumes: number; loadedVolumes: number };
 const TX_OPTIONS = { timeout: 30_000 };
+const EMPTY_COUNTS: VolumeCounts = { totalVolumes: 0, loadedVolumes: 0 };
 
 const cargoInclude = {
   deliveries: {
@@ -179,22 +181,55 @@ export class CargosService {
     return { total, loaded };
   }
 
+  private async countVolumesByItem(cargoId: number) {
+    const groups = await this.prisma.client.volume.groupBy({
+      by: ['deliveryItemId', 'loaded'],
+      where: { deliveryItem: { delivery: { cargoId } } },
+      _count: { _all: true },
+    });
+
+    const byItem = new Map<number, VolumeCounts>();
+    for (const group of groups) {
+      const counts = byItem.get(group.deliveryItemId) ?? { ...EMPTY_COUNTS };
+      counts.totalVolumes += group._count._all;
+      if (group.loaded) counts.loadedVolumes += group._count._all;
+      byItem.set(group.deliveryItemId, counts);
+    }
+    return byItem;
+  }
+
   private async buildDetail(
     cargo: CargoWithRelations,
   ): Promise<CargoResponseDto> {
-    const { total, loaded } = await this.volumeTotals(cargo.id);
+    const byItem = await this.countVolumesByItem(cargo.id);
     const { deliveries, ...header } = cargo;
-    return new CargoResponseDto({
-      ...header,
-      totalVolumes: total,
-      loadedVolumes: loaded,
-      deliveries: deliveries.map(({ items, ...delivery }) => ({
-        ...delivery,
-        items: items.map((item) => ({
+
+    const total: VolumeCounts = { ...EMPTY_COUNTS };
+
+    const mappedDeliveries = deliveries.map(({ items, ...delivery }) => {
+      const deliveryCounts: VolumeCounts = { ...EMPTY_COUNTS };
+
+      const mappedItems = items.map((item) => {
+        const counts = byItem.get(item.id) ?? EMPTY_COUNTS;
+        deliveryCounts.totalVolumes += counts.totalVolumes;
+        deliveryCounts.loadedVolumes += counts.loadedVolumes;
+        return {
           ...item,
           weight: item.weight === null ? null : item.weight.toNumber(),
-        })),
-      })),
+          ...counts,
+        };
+      });
+
+      total.totalVolumes += deliveryCounts.totalVolumes;
+      total.loadedVolumes += deliveryCounts.loadedVolumes;
+
+      return { ...delivery, ...deliveryCounts, items: mappedItems };
+    });
+
+    return new CargoResponseDto({
+      ...header,
+      ...total,
+      deliveries: mappedDeliveries,
     });
   }
 

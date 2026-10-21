@@ -75,7 +75,7 @@ export class Login {
         });
         this.notification.success(`Bem Vindo! 👋`);
         this.form.reset();
-        this.router.navigate(['/cargas']);
+        this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         closeLoading();

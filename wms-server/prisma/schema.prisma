@@ -118,6 +118,8 @@ model Cargo {
   deliveries              Delivery[]
   scans                   ScanLog[]
 
+  @@index([createdAt])
+  @@index([status, createdAt])
   @@map("cargos")
 }
 
@@ -200,5 +202,6 @@ model ScanLog {
   @@index([volumeId])
   @@index([userId])
   @@index([code])
+  @@index([createdAt])
   @@map("scan_logs")
 }

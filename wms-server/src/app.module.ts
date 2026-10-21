@@ -12,6 +12,7 @@ import { CompanyModule } from './features/company/company.module';
 import { ClientsModule } from './features/clients/clients.module';
 import { CargosModule } from './features/cargos/cargos.module';
 import { ScanModule } from './features/scan/scan.module';
+import { SummaryModule } from './features/summary/summary.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ScanModule } from './features/scan/scan.module';
     ClientsModule,
     CargosModule,
     ScanModule,
+    SummaryModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

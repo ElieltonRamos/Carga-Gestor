@@ -1,0 +1,120 @@
+<div class="max-w-5xl mx-auto flex flex-col gap-6 text-text-primary">
+  <div class="flex flex-wrap justify-between items-end gap-4">
+    <div>
+      <h1 class="text-2xl font-bold">Visão geral</h1>
+      <p class="text-sm text-text-secondary">Resumo de cargas, volumes e bipagens no período.</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <input
+        type="date"
+        [value]="from()"
+        (change)="setFrom($any($event.target).value)"
+        class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+      />
+      <span class="text-text-secondary text-sm">até</span>
+      <input
+        type="date"
+        [value]="to()"
+        (change)="setTo($any($event.target).value)"
+        class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+      />
+      <button
+        type="button"
+        (click)="resetToMonth()"
+        class="h-10 px-3 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+      >
+        Mês atual
+      </button>
+    </div>
+  </div>
+
+  @if (invalidRange()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-warning">
+      A data inicial não pode ser maior que a final.
+    </div>
+  } @else if (failed()) {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Não foi possível carregar o resumo.
+    </div>
+  } @else if (summary(); as s) {
+    <!-- Cargas -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+      @for (
+        card of [
+          { label: 'Cargas', value: s.cargos.total },
+          { label: 'Abertas', value: s.cargos.open },
+          { label: 'Carregando', value: s.cargos.loading },
+          { label: 'Expedidas', value: s.cargos.departed },
+          { label: 'Romaneios', value: s.deliveries },
+        ];
+        track card.label
+      ) {
+        <div class="bg-bg-card border border-border rounded-card p-4">
+          <p class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+            {{ card.label }}
+          </p>
+          <p class="text-2xl font-bold">{{ card.value }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Volumes -->
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <div class="flex justify-between items-baseline">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">Volumes</span>
+        <span class="text-lg font-bold">{{ loadedPercentage() }}%</span>
+      </div>
+      <div class="h-2 rounded-full bg-bg-surface overflow-hidden">
+        <div
+          class="h-full bg-success transition-all duration-300"
+          [style.width.%]="loadedPercentage()"
+        ></div>
+      </div>
+      <p class="text-xs text-text-secondary">
+        {{ s.volumes.loaded }} carregados · {{ s.volumes.pending }} pendentes ·
+        {{ s.volumes.total }} no total · {{ s.pendingAtDeparture }} pendentes na expedição
+      </p>
+    </div>
+
+    <!-- Bipagens -->
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+        Bipagens ({{ s.scans.total }})
+      </span>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <p class="text-2xl font-bold text-success">{{ s.scans.ok }}</p>
+          <p class="text-xs text-text-secondary">OK</p>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-warning">{{ s.scans.warning }}</p>
+          <p class="text-xs text-text-secondary">Alertas</p>
+        </div>
+        <div>
+          <p class="text-2xl font-bold">{{ s.scans.error }}</p>
+          <p class="text-xs text-text-secondary">Erros</p>
+        </div>
+        <div>
+          <p class="text-2xl font-bold">{{ s.scans.undo }}</p>
+          <p class="text-xs text-text-secondary">Estornos</p>
+        </div>
+      </div>
+
+      @if (reasons().length) {
+        <ul class="flex flex-col gap-1 text-sm text-text-secondary border-t border-border pt-3">
+          @for (r of reasons(); track r.label) {
+            <li class="flex justify-between">
+              <span>{{ r.label }}</span
+              ><span>{{ r.count }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  } @else {
+    <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+      Carregando...
+    </div>
+  }
+</div>

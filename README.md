@@ -32,7 +32,7 @@ Gestão de cargas, romaneios e conferência de carregamento.
 - Padrões: DTO com class-validator + `ValidationMessages`; `Logger` com `actor=`; `rethrow` (HttpException não vira `error`; P2002 vira 409); transações com timeout de 30 s; `lockCargoRow` antes de editar cargo; `PATCH` aplica só os campos que mudaram (`diff`) e loga só nomes de campos.
 - `cargos`: `cargos.controller`, `cargos.service`, `cargo-status.service` (depart/reopen), `cargo-lock`, `dto/` (?).
 - `buildDetail` monta a resposta da carga (totais de volumes por carga, romaneio e item).
-- Índices para o resumo: `Cargo(createdAt)`, `Cargo(status, createdAt)`, `ScanLog(createdAt)` (?), confirmar no schema.
+- Índices para o resumo: `Cargo(createdAt)`, `Cargo(status, createdAt)`, `ScanLog(createdAt)` — **confirmados no schema**.
 
 ## Modelo de dados
 `Cargo` 1:N `Delivery` (romaneio, com snapshot achatado do cliente: `clientName`, `clientCity`…) 1:N `DeliveryItem` 1:N `Volume`.
@@ -88,7 +88,7 @@ Gestão de cargas, romaneios e conferência de carregamento.
 Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switch`), reactive forms, Tailwind v4 com tokens de tema (light/dark), ngx-toastr, SweetAlert2, locale pt-BR.
 
 - `app.routes.ts`, `app.config.ts`.
-- `layout/app-layout` (?): `AppLayout`, casca das rotas autenticadas (navbar no topo, `<router-outlet />` no `<main>`).
+- `layout/app-layout`: `AppLayout`, casca das rotas autenticadas (navbar no topo, `<router-outlet />` no `<main>`).
 - `core/`: `interceptors/auth.interceptor`, `guards/auth.guard`, `services/` (`auth.service`, `environment` com `environment.apiUrl`, `theme.service`, `license.service`), `types/paginated-response`.
 - `shared/`: `utils/` (`volume-progress`, `delivery-payload` com `toDeliveryDto`, `form-utils`), `toastr/notification.service` (`success`, `error`, `warning`), `alerts/custom-alerts` (`alertError`, `alertLoading`, `closeLoading`, `alertConfirm`, `alertSuccess`, `alertWarning`).
 - `shared/utils/form-utils`: `digitsLength(lengths)` (validator), `onlyDigits`, `orNull`, `httpErrorMessage(err, fallback)`.
@@ -119,7 +119,7 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 
 ### Estilo (`styles.css`)
 - Tailwind v4: tokens em `@theme`, sobrescritos em `.dark`. Usar utilitários de token: `bg-bg-base|card|surface|surface-low`, `border-border`, `text-text-primary|secondary|muted|inverse`, `bg-btn-primary-bg`/`hover:bg-btn-primary-hover`, `btn-secondary-{bg,hover,text,border}`, `input-{bg,border,border-focus,text,placeholder}`, `success|warning|danger|info` (+ `-subtle`), `rounded-input|card|badge`.
-- Classes custom usadas pelo layout: `avatar-gradient`, `nav-active`, `bg-grid`, token `--color-bg-sidebar`. Não existiam no `styles.css` original (?), confirmar se foram adicionadas.
+- Classes custom usadas pelo layout: `avatar-gradient`, `nav-active`, `bg-grid`, token `--color-bg-sidebar`. **PENDENTE: adicionar ao `styles.css`**.
 - Botão primário: `bg-btn-primary-bg text-text-inverse h-10 px-6 rounded-input font-semibold text-sm hover:bg-btn-primary-hover`. Input: `h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none`.
 
 ### Auth
@@ -143,10 +143,24 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 - Legado do mock, não usar: `CargoService` (`cargo-registration.service`), `types/cargo-registration`, `shared/utils/delivery-progress`.
 
 ## Pendências
-- Tela inexistente: licença.
-- `totalVolumes`/`loadedVolumes` por romaneio e item no `GET /cargos/{id}`: confirmar no backend; depois remover o `?` em `types/cargo`.
-- `CargoOverview` sem filtros de busca/status nem modo "todas as datas" (a API não tem "sem filtro de criação").
-- Confirmar no `GET /cargos`: `createdTo` inclusivo até o fim do dia e 400 quando `createdFrom > createdTo`.
-- Usuários: sem reativação na API (inativos somem da lista); o backend não impede o usuário de desativar a si mesmo (o front esconde o botão).
-- Confirmar se o `styles.css` já tem `avatar-gradient`, `nav-active`, `bg-grid` e `--color-bg-sidebar`.
-- Decidir se `ScanDelivery` e a rota `conferencia/...` saem do projeto.
+
+### ✅ Concluídas
+- [x] **Filtros de período e botões "Esta semana"/"Este mês" no CargoOverview** (`cargo-overview.ts:99-109`)
+- [x] **Rota `/configuracoes` no layout autenticado** (`app.routes.ts:30`)
+- [x] **Página Settings (CompanyForm + UsersList)** — cadastro/edição de empresa e usuários
+- [x] **Dashboard com SummaryService** — resumo por período com contadores de status, volumes e scans
+- [x] **Rotas 404 e offline** (`NotFound`, `OfflineComponent`)
+- [x] **Validação `createdFrom > createdTo` no frontend** (CargoOverview e Dashboard)
+- [x] **Índices no schema Prisma** (`Cargo.createdAt`, `Cargo(status, createdAt)`, `ScanLog.createdAt`)
+- [x] **`totalVolumes`/`loadedVolumes` por romaneio e item no backend** (`buildDetail` popula ambos)
+- [x] **Soft delete de usuário** — backend desativa, frontend lista só ativos
+
+### ⏳ Em aberto
+- [ ] **Tela de licença** — service + endpoints existem (`LicenseService`, `/license/*`), mas não há rota/componente no frontend
+- [ ] **Remover `?` em `totalVolumes`/`loadedVolumes` nos types** — `cargo.ts:40-41, 63-64` ainda opcionais; backend já garante
+- [ ] **Filtros `status`, `search`, `loadDate` no CargoOverview** — API aceita, UI só expõe datas
+- [ ] **Modo "todas as datas" no CargoOverview** — API não tem "sem filtro"; default é dia atual
+- [ ] **Backend: 400 quando `createdFrom > createdTo`** — frontend valida; backend cria range vazio sem 400 explícito
+- [ ] **CSS: adicionar `avatar-gradient`, `nav-active`, `bg-grid`, `--color-bg-sidebar`** ao `styles.css`
+- [ ] **Decidir futuro do `ScanDelivery` / rota `conferencia/...`** — README diz "só validação, não integrado"
+- [ ] **Backend: impedir usuário de se desativar** — frontend esconde botão, mas API permite

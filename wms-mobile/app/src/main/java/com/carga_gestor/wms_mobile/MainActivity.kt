@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
                     NavHost(navController, startDestination = ScreenRoutes.LOGIN) {
-                        buildNavGraph()
+                        buildNavGraph(navController)
                     }
                 }
             }

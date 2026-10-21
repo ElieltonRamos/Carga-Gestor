@@ -1,6 +1,7 @@
 package com.carga_gestor.wms_mobile.di
 
 import android.content.Context
+import com.carga_gestor.wms_mobile.BuildConfig
 import com.carga_gestor.wms_mobile.data.api.ApiService
 import com.carga_gestor.wms_mobile.data.api.AuthInterceptor
 import com.carga_gestor.wms_mobile.data.repository.AuthRepository
@@ -8,37 +9,30 @@ import com.carga_gestor.wms_mobile.util.TokenManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 import dagger.Provides
-import javax.inject.Singleton
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
     /**
-     * URL base da API
-     * TODO: Mover para BuildConfig ou DataStore para configurar em runtime
+     * URL base da API (definida em build.gradle.kts -> BASE_URL)
      */
     @Provides
     @Singleton
     @Named("BaseUrl")
-    fun provideBaseUrl(): String {
-        // Em desenvolvimento, usar 10.0.2.2 para acessar localhost do host no emulador
-        // Em produção, usar a URL real do servidor
-        return "http://10.0.2.2:3004/api/"
-    }
+    fun provideBaseUrl(): String = BuildConfig.BASE_URL
 
-    /**
-     * Gson configurado
-     */
     @Provides
     @Singleton
     fun provideGson(): Gson {
@@ -47,17 +41,16 @@ object AppModule {
             .create()
     }
 
-    /**
-     * OkHttpClient com logging e timeout
-     */
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        authInterceptor: AuthInterceptor,
-        @Named("BaseUrl") baseUrl: String
-    ): OkHttpClient {
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+            redactHeader("Authorization")
         }
 
         return OkHttpClient.Builder()
@@ -69,9 +62,6 @@ object AppModule {
             .build()
     }
 
-    /**
-     * Retrofit configurado
-     */
     @Provides
     @Singleton
     fun provideRetrofit(
@@ -86,30 +76,24 @@ object AppModule {
             .build()
     }
 
-    /**
-     * ApiService
-     */
     @Provides
     @Singleton
     fun provideApiService(retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
     }
 
-    /**
-     * AuthRepository
-     */
     @Provides
     @Singleton
-    fun provideAuthRepository(apiService: ApiService, tokenManager: TokenManager): AuthRepository {
-        return AuthRepository(apiService, tokenManager)
+    fun provideTokenManager(@ApplicationContext context: Context): TokenManager {
+        return TokenManager(context)
     }
 
-    /**
-     * TokenManager
-     */
     @Provides
     @Singleton
-    fun provideTokenManager(@Named("AppContext") context: Context): TokenManager {
-        return TokenManager(context)
+    fun provideAuthRepository(
+        apiService: ApiService,
+        tokenManager: TokenManager
+    ): AuthRepository {
+        return AuthRepository(apiService, tokenManager)
     }
 }

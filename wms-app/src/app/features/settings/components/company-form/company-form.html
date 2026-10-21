@@ -1,0 +1,61 @@
+<section class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-4">
+  <h2 class="font-semibold">Dados da empresa</h2>
+
+  @if (status() === 'loading') {
+    <p class="text-sm text-text-muted">Carregando dados da empresa...</p>
+  } @else if (status() === 'error') {
+    <div class="flex items-center gap-3 text-sm text-text-muted">
+      <span>Não foi possível carregar os dados da empresa.</span>
+      <button
+        type="button"
+        (click)="load()"
+        class="h-8 px-3 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+      >
+        Tentar novamente
+      </button>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+        @for (field of fields; track field.name) {
+          <div class="flex flex-col gap-1" [class]="field.span">
+            <label
+              [for]="'company-' + field.name"
+              class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+            >
+              {{ field.label }}
+            </label>
+            <input
+              [id]="'company-' + field.name"
+              type="text"
+              [formControlName]="field.name"
+              [attr.maxlength]="field.maxLength"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text placeholder:text-input-placeholder focus:border-input-border-focus focus:outline-none"
+            />
+            @if (invalid(field.name)) {
+              <span class="text-xs text-danger">{{ field.error }}</span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="flex items-center justify-end gap-3">
+        <button
+          type="button"
+          (click)="discard()"
+          [disabled]="saving()"
+          class="h-10 px-4 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-40"
+        >
+          Descartar
+        </button>
+        <button
+          type="submit"
+          [disabled]="saving()"
+          class="bg-btn-primary-bg text-text-inverse h-10 px-6 rounded-input font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-40"
+        >
+          Salvar alterações
+        </button>
+      </div>
+    </form>
+  }
+</section>

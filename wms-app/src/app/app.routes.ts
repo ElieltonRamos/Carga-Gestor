@@ -9,6 +9,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { AppLayout } from './shared/app-layout/app-layout';
 import { Dashboard } from './features/dashboard/pages/dashboard';
 import { Clients } from './features/clients/pages/clients';
+import { Settings } from './features/settings/pages/settings';
 
 export const routes: Routes = [
   { path: '', component: Login },
@@ -23,10 +24,8 @@ export const routes: Routes = [
       { path: 'cargas/:cargoId', component: CargoDetail },
       { path: 'cargas/:cargoId/entregas/:deliveryId', component: DeliveryDetail },
       { path: 'conferencia/:cargoId/:deliveryId', component: ScanDelivery },
-
-      // quando as telas existirem:
       { path: 'clientes', component: Clients },
-      // { path: 'configuracoes', component: Settings },,
+      { path: 'configuracoes', component: Settings },
     ],
   },
 ];

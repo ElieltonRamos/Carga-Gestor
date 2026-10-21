@@ -1,0 +1,236 @@
+<section class="flex flex-col gap-4">
+  <!-- Formulário -->
+  <form
+    #formCard
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+    class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-4"
+  >
+    <h2 class="font-semibold">
+      @if (editingId() !== null) {
+        Editar usuário
+      } @else {
+        Cadastrar usuário
+      }
+    </h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+      <div class="flex flex-col gap-1 md:col-span-3">
+        <label
+          for="user-name"
+          class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+        >
+          Nome *
+        </label>
+        <input
+          id="user-name"
+          type="text"
+          formControlName="name"
+          maxlength="191"
+          class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+        />
+        @if (invalid('name')) {
+          <span class="text-xs text-danger">Informe o nome</span>
+        }
+      </div>
+
+      <div class="flex flex-col gap-1 md:col-span-3">
+        <label
+          for="user-username"
+          class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+        >
+          Usuário (login) *
+        </label>
+        <input
+          id="user-username"
+          type="text"
+          formControlName="username"
+          maxlength="50"
+          autocomplete="off"
+          class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+        />
+        @if (invalid('username')) {
+          <span class="text-xs text-danger">
+            De 3 a 50 caracteres: letras, números, ponto, hífen e sublinhado
+          </span>
+        }
+      </div>
+
+      <div class="flex flex-col gap-1 md:col-span-3">
+        <label
+          for="user-password"
+          class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+        >
+          @if (editingId() !== null) {
+            Nova senha
+          } @else {
+            Senha *
+          }
+        </label>
+        <input
+          id="user-password"
+          type="password"
+          formControlName="password"
+          maxlength="72"
+          autocomplete="new-password"
+          [placeholder]="
+            editingId() !== null ? 'Deixe vazio para manter' : 'Mínimo de 6 caracteres'
+          "
+          class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text placeholder:text-input-placeholder focus:border-input-border-focus focus:outline-none"
+        />
+        @if (invalid('password')) {
+          <span class="text-xs text-danger">A senha deve ter de 6 a 72 caracteres</span>
+        }
+      </div>
+
+      <div class="flex flex-col gap-1 md:col-span-3">
+        <label
+          for="user-role"
+          class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+        >
+          Perfil *
+        </label>
+        <select
+          id="user-role"
+          formControlName="role"
+          class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+        >
+          @for (role of roles; track role.value) {
+            <option [value]="role.value">{{ role.label }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-3">
+      @if (editingId() !== null) {
+        <button
+          type="button"
+          (click)="cancelEdit()"
+          [disabled]="saving()"
+          class="h-10 px-4 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-40"
+        >
+          Cancelar
+        </button>
+      }
+      <button
+        type="submit"
+        [disabled]="saving()"
+        class="bg-btn-primary-bg text-text-inverse h-10 px-6 rounded-input font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-40"
+      >
+        @if (editingId() !== null) {
+          Salvar alterações
+        } @else {
+          Cadastrar
+        }
+      </button>
+    </div>
+  </form>
+
+  <!-- Listagem -->
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex flex-col gap-1">
+      <label
+        for="user-search"
+        class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+      >
+        Buscar
+      </label>
+      <input
+        id="user-search"
+        type="search"
+        placeholder="Nome de usuário"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+        class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text placeholder:text-input-placeholder focus:border-input-border-focus focus:outline-none"
+      />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label
+        for="user-role-filter"
+        class="text-xs font-bold tracking-wide text-text-secondary uppercase"
+      >
+        Perfil
+      </label>
+      <select
+        id="user-role-filter"
+        [value]="roleFilter()"
+        (change)="roleFilter.set($any($event.target).value)"
+        class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+      >
+        <option value="">Todos</option>
+        @for (role of roles; track role.value) {
+          <option [value]="role.value">{{ role.label }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <div class="bg-bg-card border border-border rounded-card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-xs font-bold tracking-wide text-text-secondary uppercase">
+          <th class="px-4 py-3">Nome</th>
+          <th class="px-4 py-3">Usuário</th>
+          <th class="px-4 py-3">Perfil</th>
+          <th class="px-4 py-3">Desde</th>
+          <th class="px-4 py-3 text-right">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (user of rows(); track user.id) {
+          <tr class="border-t border-border">
+            <td class="px-4 py-3 font-medium">{{ user.name }}</td>
+            <td class="px-4 py-3 text-text-secondary">{{ user.username }}</td>
+            <td class="px-4 py-3">
+              <span
+                class="text-xs font-bold px-2 py-1 rounded-badge"
+                [class]="roleClass(user.role)"
+              >
+                {{ roleLabel(user.role) }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-text-secondary">{{ user.createdAt | date: 'dd/MM/yyyy' }}</td>
+            <td class="px-4 py-3">
+              <div class="flex justify-end gap-2">
+                @if (isProtected(user)) {
+                  <span class="text-xs text-text-muted">Protegido</span>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="startEdit(user)"
+                    class="h-8 px-3 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+                  >
+                    Editar
+                  </button>
+                  @if (canDeactivate(user)) {
+                    <button
+                      type="button"
+                      (click)="deactivate(user)"
+                      class="h-8 px-3 rounded-input border border-border text-danger hover:bg-danger-subtle transition-colors text-xs"
+                    >
+                      Desativar
+                    </button>
+                  }
+                }
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="5" class="px-4 py-6 text-center text-text-muted">
+              @if (loading()) {
+                Carregando...
+              } @else if (failed()) {
+                Não foi possível carregar os usuários.
+              } @else {
+                Nenhum usuário encontrado.
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

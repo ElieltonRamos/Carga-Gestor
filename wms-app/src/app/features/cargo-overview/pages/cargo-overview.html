@@ -1,127 +1,137 @@
-<div class="min-h-screen bg-bg-base text-text-primary">
-  <div class="max-w-5xl mx-auto p-6 flex flex-col gap-6">
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-text-primary">Acompanhamento de Carga</h1>
-        <p class="text-sm text-text-secondary">Cargas em andamento e concluídas.</p>
-      </div>
-      <button
-        type="button"
-        (click)="goToNewCargo()"
-        class="bg-btn-primary-bg text-text-inverse h-10 px-6 rounded-input font-semibold text-sm hover:bg-btn-primary-hover transition-colors"
-      >
-        Nova Carga
-      </button>
+<div class="max-w-5xl mx-auto flex flex-col gap-6 text-text-primary">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-text-primary">Acompanhamento de Carga</h1>
+      <p class="text-sm text-text-secondary">Cargas em andamento e concluídas.</p>
     </div>
+    <button
+      type="button"
+      (click)="goToNewCargo()"
+      class="bg-btn-primary-bg text-text-inverse h-10 px-6 rounded-input font-semibold text-sm hover:bg-btn-primary-hover transition-colors"
+    >
+      Nova Carga
+    </button>
+  </div>
 
-    <div class="flex items-center gap-3">
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex flex-col gap-1">
       <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
-        Data de criação
+        Data inicial
       </label>
       <input
         type="date"
-        [value]="dateFilter()"
-        (change)="onDateChange($any($event.target).value)"
+        [value]="from()"
+        [max]="to()"
+        (change)="setFrom($any($event.target).value)"
         class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
       />
-      @if (!isToday()) {
-        <button
-          type="button"
-          (click)="resetToToday()"
-          class="h-10 px-3 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
-        >
-          Hoje
-        </button>
-      }
     </div>
 
-    <div class="flex flex-col gap-3">
-      @for (entry of entries(); track entry.cargo.id) {
-        <button
-          type="button"
-          (click)="goToCargo(entry.cargo.id)"
-          class="text-left bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3 hover:bg-bg-surface-low transition-colors"
-        >
-          <div class="flex justify-between items-start">
-            <div>
-              <h2 class="font-semibold text-text-primary">{{ entry.cargo.loadOrder }}</h2>
-              <p class="text-xs text-text-secondary">
-                {{ entry.cargo.loadDate | date: 'dd/MM/yyyy' : 'UTC' }} · Motorista:
-                {{ entry.cargo.driverName || '—' }}
-              </p>
-            </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+        Data final
+      </label>
+      <input
+        type="date"
+        [value]="to()"
+        [min]="from()"
+        (change)="setTo($any($event.target).value)"
+        class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+      />
+    </div>
 
-            @if (entry.progress.status === 'complete') {
-              <span
-                class="text-xs font-bold px-2 py-1 rounded-badge bg-success-subtle text-success"
-              >
-                Concluída
-              </span>
-            } @else if (entry.progress.status === 'partial') {
-              <span
-                class="text-xs font-bold px-2 py-1 rounded-badge bg-warning-subtle text-warning"
-              >
-                Em andamento
-              </span>
-            } @else {
-              <span
-                class="text-xs font-bold px-2 py-1 rounded-badge bg-bg-surface text-text-secondary"
-              >
-                Pendente
-              </span>
-            }
+    <div class="flex items-center gap-2">
+      <button type="button" (click)="setWeek()" [class]="presetClass('week')">Esta semana</button>
+      <button type="button" (click)="setMonth()" [class]="presetClass('month')">Este mês</button>
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-3">
+    @for (entry of entries(); track entry.cargo.id) {
+      <button
+        type="button"
+        (click)="goToCargo(entry.cargo.id)"
+        class="text-left bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3 hover:bg-bg-surface-low transition-colors"
+      >
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="font-semibold text-text-primary">{{ entry.cargo.loadOrder }}</h2>
+            <p class="text-xs text-text-secondary">
+              {{ entry.cargo.loadDate | date: 'dd/MM/yyyy' : 'UTC' }} · Motorista:
+              {{ entry.cargo.driverName || '—' }}
+            </p>
           </div>
 
-          <div class="flex flex-col gap-1">
-            <div class="flex justify-between items-baseline">
-              <span class="text-xs text-text-secondary">
-                {{ entry.cargo.totalDestinations }} romaneio(s) · {{ entry.cargo.loadedVolumes }}/{{
-                  entry.cargo.totalVolumes
-                }}
-                volumes
-              </span>
-              <span class="text-lg font-bold text-text-primary"
-                >{{ entry.progress.percentage }}%</span
-              >
-            </div>
-            <div class="h-2 rounded-full bg-bg-surface overflow-hidden">
-              <div
-                class="h-full transition-all duration-300"
-                [class.bg-success]="entry.progress.status === 'complete'"
-                [class.bg-warning]="entry.progress.status === 'partial'"
-                [class.bg-text-muted]="entry.progress.status === 'pending'"
-                [style.width.%]="entry.progress.percentage"
-              ></div>
-            </div>
-          </div>
-        </button>
-      } @empty {
-        <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
-          Nenhuma carga nesta data.
+          @if (entry.progress.status === 'complete') {
+            <span class="text-xs font-bold px-2 py-1 rounded-badge bg-success-subtle text-success">
+              Concluída
+            </span>
+          } @else if (entry.progress.status === 'partial') {
+            <span class="text-xs font-bold px-2 py-1 rounded-badge bg-warning-subtle text-warning">
+              Em andamento
+            </span>
+          } @else {
+            <span
+              class="text-xs font-bold px-2 py-1 rounded-badge bg-bg-surface text-text-secondary"
+            >
+              Pendente
+            </span>
+          }
         </div>
-      }
-    </div>
 
-    @if (totalPages() > 1) {
-      <div class="flex items-center justify-center gap-4 text-sm text-text-secondary">
-        <button
-          type="button"
-          (click)="prevPage()"
-          [disabled]="page() === 1"
-          class="disabled:opacity-40"
-        >
-          Anterior
-        </button>
-        <span>{{ page() }} / {{ totalPages() }}</span>
-        <button
-          type="button"
-          (click)="nextPage()"
-          [disabled]="page() === totalPages()"
-          class="disabled:opacity-40"
-        >
-          Próxima
-        </button>
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between items-baseline">
+            <span class="text-xs text-text-secondary">
+              {{ entry.cargo.totalDestinations }} romaneio(s) · {{ entry.cargo.loadedVolumes }}/{{
+                entry.cargo.totalVolumes
+              }}
+              volumes
+            </span>
+            <span class="text-lg font-bold text-text-primary"
+              >{{ entry.progress.percentage }}%</span
+            >
+          </div>
+          <div class="h-2 rounded-full bg-bg-surface overflow-hidden">
+            <div
+              class="h-full transition-all duration-300"
+              [class.bg-success]="entry.progress.status === 'complete'"
+              [class.bg-warning]="entry.progress.status === 'partial'"
+              [class.bg-text-muted]="entry.progress.status === 'pending'"
+              [style.width.%]="entry.progress.percentage"
+            ></div>
+          </div>
+        </div>
+      </button>
+    } @empty {
+      <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+        @if (invalidRange()) {
+          A data inicial não pode ser maior que a final.
+        } @else {
+          Nenhuma carga neste período.
+        }
       </div>
     }
   </div>
+
+  @if (totalPages() > 1) {
+    <div class="flex items-center justify-center gap-4 text-sm text-text-secondary">
+      <button
+        type="button"
+        (click)="prevPage()"
+        [disabled]="page() === 1"
+        class="disabled:opacity-40"
+      >
+        Anterior
+      </button>
+      <span>{{ page() }} / {{ totalPages() }}</span>
+      <button
+        type="button"
+        (click)="nextPage()"
+        [disabled]="page() === totalPages()"
+        class="disabled:opacity-40"
+      >
+        Próxima
+      </button>
+    </div>
+  }
 </div>

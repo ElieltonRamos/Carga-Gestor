@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { Location } from '@angular/common';
 
 interface NavItem {
   label: string;
@@ -19,6 +20,7 @@ export class AppLayout {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly themeService = inject(ThemeService);
+  private readonly location = inject(Location);
 
   readonly nav: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'grid' },
@@ -46,5 +48,13 @@ export class AppLayout {
   logout(): void {
     localStorage.removeItem('token');
     this.router.navigate(['/']);
+  }
+
+  goBack(): void {
+    this.location.back();
+  }
+
+  goForward(): void {
+    this.location.forward();
   }
 }

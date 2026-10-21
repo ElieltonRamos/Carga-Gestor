@@ -8,6 +8,7 @@ import { ScanDelivery } from './features/scan-check/pages/scan-check';
 import { authGuard } from './core/guards/auth.guard';
 import { AppLayout } from './shared/app-layout/app-layout';
 import { Dashboard } from './features/dashboard/pages/dashboard';
+import { Clients } from './features/clients/pages/clients';
 
 export const routes: Routes = [
   { path: '', component: Login },
@@ -24,7 +25,7 @@ export const routes: Routes = [
       { path: 'conferencia/:cargoId/:deliveryId', component: ScanDelivery },
 
       // quando as telas existirem:
-      // { path: 'clientes', component: ClientsList },
+      { path: 'clientes', component: Clients },
       // { path: 'configuracoes', component: Settings },,
     ],
   },

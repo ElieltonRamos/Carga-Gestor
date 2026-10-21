@@ -10,6 +10,8 @@ import { AppLayout } from './shared/app-layout/app-layout';
 import { Dashboard } from './features/dashboard/pages/dashboard';
 import { Clients } from './features/clients/pages/clients';
 import { Settings } from './features/settings/pages/settings';
+import { NotFound } from './shared/offline/pages/not-found';
+import { OfflineComponent } from './shared/offline/pages/offline.component';
 
 export const routes: Routes = [
   { path: '', component: Login },
@@ -28,4 +30,6 @@ export const routes: Routes = [
       { path: 'configuracoes', component: Settings },
     ],
   },
+  { path: 'offline', component: OfflineComponent },
+  { path: '**', component: NotFound },
 ];

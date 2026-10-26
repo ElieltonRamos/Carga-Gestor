@@ -19,6 +19,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.carga_gestor.wms_mobile.ui.screens.cargos.CargoListScreen
+import com.carga_gestor.wms_mobile.ui.screens.cargos.CargoListViewModel
 import com.carga_gestor.wms_mobile.ui.screens.login.LoginScreen
 import com.carga_gestor.wms_mobile.ui.screens.login.LoginViewModel
 
@@ -32,9 +34,11 @@ fun NavGraphBuilder.buildNavGraph(navController: NavHostController) {
     }
 
     composable(ScreenRoutes.MAIN) {
-        // TODO: Tela principal - lista de cargas
-        MainPlaceholderScreen(
-            onNavigateToLogin = {
+        val viewModel: CargoListViewModel = hiltViewModel()
+        CargoListScreen(
+            viewModel = viewModel,
+            onCargoClick = { cargoId -> navController.navigate(ScreenRoutes.scan(cargoId)) },
+            onLogout = {
                 navController.navigate(ScreenRoutes.LOGIN) {
                     popUpTo(ScreenRoutes.MAIN) { inclusive = true }
                 }
@@ -70,22 +74,6 @@ fun NavGraphBuilder.buildNavGraph(navController: NavHostController) {
     composable(ScreenRoutes.SETTINGS) {
         // TODO: SettingsScreen
         SettingsPlaceholderScreen()
-    }
-}
-
-@Composable
-fun MainPlaceholderScreen(onNavigateToLogin: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "Tela Principal - Lista de Cargas", fontSize = 18.sp)
-            Button(onClick = onNavigateToLogin, modifier = Modifier.padding(top = 16.dp)) {
-                Text("Logout")
-            }
-        }
     }
 }
 

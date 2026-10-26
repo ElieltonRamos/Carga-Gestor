@@ -66,7 +66,9 @@ data class CargoSummary(
     @SerializedName("truck") val truck: String?,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("updatedAt") val updatedAt: String,
-    @SerializedName("pendingAtDeparture") val pendingAtDeparture: Int?
+    @SerializedName("pendingAtDeparture") val pendingAtDeparture: Int?,
+    @SerializedName("totalVolumes") val totalVolumes: Int,
+    @SerializedName("loadedVolumes") val loadedVolumes: Int
 )
 
 /**
@@ -147,13 +149,13 @@ enum class DeliveryStatus(@SerializedName("value") val value: String) {
 @Serializable
 data class DeliveryItemDetail(
     @SerializedName("id") val id: Int,
+    @SerializedName("deliveryId") val deliveryId: Int,
     @SerializedName("code") val code: String?,
     @SerializedName("product") val product: String,
     @SerializedName("quantity") val quantity: Int,
     @SerializedName("volumeCount") val volumeCount: Int?,
-    @SerializedName("weight") val weight: String?, // Decimal como string
+    @SerializedName("weight") val weight: Double?,
     @SerializedName("notes") val notes: String?,
-    @SerializedName("volumes") val volumes: List<VolumeDetail>,
     @SerializedName("totalVolumes") val totalVolumes: Int,
     @SerializedName("loadedVolumes") val loadedVolumes: Int
 )
@@ -190,10 +192,24 @@ data class ScanRequest(
 data class ScanResponse(
     @SerializedName("result") val result: ScanResult,
     @SerializedName("reason") val reason: ScanReason?,
-    @SerializedName("volume") val volume: VolumeDetail?,
-    @SerializedName("message") val message: String?
+    @SerializedName("message") val message: String,
+    @SerializedName("code") val code: String,
+    @SerializedName("cargoId") val cargoId: Int,
+    @SerializedName("cargoStatus") val cargoStatus: CargoStatus,
+    @SerializedName("totalVolumes") val totalVolumes: Int,
+    @SerializedName("loadedVolumes") val loadedVolumes: Int,
+    @SerializedName("volume") val volume: ScanVolume?
 )
 
+@Serializable
+data class ScanVolume(
+    @SerializedName("id") val id: Int,
+    @SerializedName("number") val number: Int,
+    @SerializedName("product") val product: String,
+    @SerializedName("romaneioNumber") val romaneioNumber: String,
+    @SerializedName("loaded") val loaded: Boolean,
+    @SerializedName("loadedAt") val loadedAt: String?
+)
 /**
  * Log de Scan (histórico)
  * GET /api/scans
@@ -208,7 +224,8 @@ data class ScanLog(
     @SerializedName("userId") val userId: Int,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("cargoId") val cargoId: Int?,
-    @SerializedName("device") val device: String?
+    @SerializedName("device") val device: String?,
+    @SerializedName("userName") val userName: String?,
 )
 
 /**

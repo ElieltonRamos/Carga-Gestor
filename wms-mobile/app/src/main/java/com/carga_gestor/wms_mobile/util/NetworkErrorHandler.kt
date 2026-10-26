@@ -19,10 +19,10 @@ object NetworkErrorHandler {
                     400 -> "Dados inválidos: ${parseErrorBody(responseBody)}"
                     401 -> "Credenciais inválidas ou sessão expirada"
                     403 -> "Acesso negado"
-                    404 -> "Recurso não encontrado"
-                    409 -> "Conflito: ${parseErrorBody(responseBody)}"
+                    404 -> parseErrorBody(responseBody).ifBlank { "Recurso não encontrado" }
+                    409 -> parseErrorBody(responseBody).ifBlank { "Conflito ao processar a solicitação" }
                     500 -> "Erro interno do servidor"
-                    else -> "Erro ${code}: ${parseErrorBody(responseBody)}"
+                    else -> "Erro $code: ${parseErrorBody(responseBody)}"
                 }
             }
             is java.net.UnknownHostException -> "Sem conexão com a internet"

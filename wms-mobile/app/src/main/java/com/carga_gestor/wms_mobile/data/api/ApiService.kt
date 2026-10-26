@@ -9,9 +9,9 @@ import com.carga_gestor.wms_mobile.data.model.PaginatedResponse
 import com.carga_gestor.wms_mobile.data.model.ScanLog
 import com.carga_gestor.wms_mobile.data.model.ScanRequest
 import com.carga_gestor.wms_mobile.data.model.ScanResponse
-import com.carga_gestor.wms_mobile.data.model.ScanUndoRequest
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -39,15 +39,6 @@ interface ApiService {
      * Como o backend não tem /me, usamos o payload do JWT
      */
 
-    // ==================== COMPANY ====================
-
-    /**
-     * Obter dados da empresa
-     * GET /api/company
-     */
-    @GET("company")
-    suspend fun getCompany(): User // TODO: mudar para Company model quando criado
-
     // ==================== CARGOS ====================
 
     /**
@@ -73,28 +64,6 @@ interface ApiService {
     @GET("cargos/{id}")
     suspend fun getCargo(@Path("id") id: Int): CargoDetail
 
-    /**
-     * Expedir carga (DEPARTED)
-     * POST /api/cargos/{id}/depart
-     * Body: { force?: boolean }
-     */
-    @POST("cargos/{id}/depart")
-    suspend fun departCargo(
-        @Path("id") id: Int,
-        @Body body: Map<String, Boolean> = emptyMap()
-    ): CargoDetail
-
-    /**
-     * Reabrir carga (OPEN)
-     * POST /api/cargos/{id}/reopen
-     * Body: { reason: string (max 500) }
-     */
-    @POST("cargos/{id}/reopen")
-    suspend fun reopenCargo(
-        @Path("id") id: Int,
-        @Body body: Map<String, String>
-    ): CargoDetail
-
     // ==================== SCANS ====================
 
     /**
@@ -103,7 +72,10 @@ interface ApiService {
      * Body: { code: string, cargoId: number }
      */
     @POST("scans")
-    suspend fun scan(@Body request: ScanRequest): ScanResponse
+    suspend fun scan(
+        @Body request: ScanRequest,
+        @Header("x-device-id") deviceId: String? = null
+    ): ScanResponse
 
     /**
      * Desfazer scan
@@ -111,7 +83,10 @@ interface ApiService {
      * Body: { scanLogId: number, reason: string }
      */
     @POST("scans/undo")
-    suspend fun undoScan(@Body request: ScanUndoRequest): ScanResponse
+    suspend fun undoScan(
+        @Body request: ScanRequest,
+        @Header("x-device-id") deviceId: String? = null
+    ): ScanResponse
 
     /**
      * Histórico de scans
@@ -123,8 +98,8 @@ interface ApiService {
         @Query("cargoId") cargoId: Int? = null,
         @Query("userId") userId: Int? = null,
         @Query("result") result: String? = null,
-        @Query("from") from: String? = null,
-        @Query("to") to: String? = null,
+        @Query("createdFrom") createdFrom: String? = null,
+        @Query("createdTo") createdTo: String? = null,
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 20
     ): PaginatedResponse<ScanLog>

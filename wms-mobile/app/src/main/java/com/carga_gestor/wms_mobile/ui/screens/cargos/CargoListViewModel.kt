@@ -79,10 +79,6 @@ class CargoListViewModel @Inject constructor(
         reload()
     }
 
-    fun reload() = load(reset = true)
-
-    fun loadMore() = load(reset = false)
-
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
@@ -98,13 +94,23 @@ class CargoListViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = message) }
     }
 
-    private fun load(reset: Boolean) {
+    fun reload() = load(reset = true)
+
+    fun loadMore() = load(reset = false)
+
+    fun refreshSilently() {
+        if (_uiState.value.isLoading) return
+        load(reset = true, silent = true)
+    }
+
+
+    private fun load(reset: Boolean, silent: Boolean = false) {
         val s = _uiState.value
         if (!reset && (s.isLoading || s.isLoadingMore || s.page >= s.totalPages)) return
 
         if (reset) loadJob?.cancel()
         val nextPage = if (reset) 1 else s.page + 1
-        _uiState.update { it.copy(isLoading = reset, isLoadingMore = !reset) }
+        _uiState.update { it.copy(isLoading = reset && !silent, isLoadingMore = !reset) }
 
         loadJob = viewModelScope.launch {
             val result = cargoRepository.getCargos(

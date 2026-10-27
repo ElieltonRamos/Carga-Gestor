@@ -3,15 +3,11 @@ package com.carga_gestor.wms_mobile.ui.navigation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
@@ -23,6 +19,7 @@ import com.carga_gestor.wms_mobile.ui.screens.cargos.CargoListScreen
 import com.carga_gestor.wms_mobile.ui.screens.cargos.CargoListViewModel
 import com.carga_gestor.wms_mobile.ui.screens.login.LoginScreen
 import com.carga_gestor.wms_mobile.ui.screens.login.LoginViewModel
+import com.carga_gestor.wms_mobile.ui.screens.scan.ScanScreen
 
 /**
  * Grafo de navegação principal
@@ -64,11 +61,8 @@ fun NavGraphBuilder.buildNavGraph(navController: NavHostController) {
                 defaultValue = 0
             }
         )
-    ) { backStackEntry ->
-        val cargoId = backStackEntry.arguments?.getInt("cargoId") ?: 0
-        val deliveryId = backStackEntry.arguments?.getInt("deliveryId")?.takeIf { it > 0 }
-        // TODO: ScanScreen(cargoId, deliveryId)
-        ScanPlaceholderScreen(cargoId = cargoId, deliveryId = deliveryId)
+    ) {
+        ScanScreen(onBack = { navController.popBackStack() })
     }
 
     composable(ScreenRoutes.SETTINGS) {
@@ -86,26 +80,6 @@ fun CargoDetailPlaceholderScreen(cargoId: Int) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(text = "Detalhes da Carga #$cargoId", fontSize = 18.sp)
-        }
-    }
-}
-
-@Composable
-fun ScanPlaceholderScreen(cargoId: Int, deliveryId: Int?) {
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "Scanner - Carga #$cargoId", fontSize = 18.sp)
-            deliveryId?.let {
-                Text(
-                    text = "Romaneio #$it",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }

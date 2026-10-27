@@ -33,7 +33,6 @@ sealed interface Screen {
 object ScreenRoutes {
     const val LOGIN = "login"
     const val MAIN = "main"
-    const val CARGO_LIST = "cargo_list"
     const val CARGO_DETAIL = "cargo_detail/{cargoId}"
     const val SCAN = "scan/{cargoId}?deliveryId={deliveryId}"
     const val SETTINGS = "settings"

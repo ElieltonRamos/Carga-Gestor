@@ -3,15 +3,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { PackingLabel, ProductLabel } from '../packing-label/pages/packing-label';
-import { CargosService } from '../cargo-overview/services/cargos.service';
-import { Cargo, CargoDelivery, CargoDeliveryDto } from '../cargo-overview/types/cargo';
-
-type PrintMode = 'romaneio' | 'etiquetas' | null;
+import { ProductLabel, PackingLabel } from '../../packing-label/pages/packing-label';
+import { CargosService } from '../../cargo-overview/services/cargos.service';
+import { Cargo, CargoDelivery, CargoDeliveryDto } from '../../cargo-overview/types/cargo';
+import { PrintService } from '../../../core/services/print.service';
+import { RomaneioPrint } from '../components/romaneio-print';
 
 @Component({
   selector: 'app-delivery-detail',
-  imports: [ReactiveFormsModule, PackingLabel],
+  imports: [ReactiveFormsModule],
   templateUrl: './delivery-detail.html',
 })
 export class DeliveryDetail {
@@ -19,11 +19,11 @@ export class DeliveryDetail {
   private readonly router = inject(Router);
   private readonly cargosService = inject(CargosService);
   private readonly fb = inject(FormBuilder);
+  private readonly printService = inject(PrintService);
 
   loading = signal(true);
   isSaving = signal(false);
   errorMessage = signal<string | null>(null);
-  printMode = signal<PrintMode>(null);
 
   private readonly cargoId = Number(this.route.snapshot.paramMap.get('cargoId'));
   private readonly deliveryId = Number(this.route.snapshot.paramMap.get('deliveryId'));
@@ -130,13 +130,13 @@ export class DeliveryDetail {
   }
 
   printRomaneio(): void {
-    this.printMode.set('romaneio');
-    setTimeout(() => window.print(), 0);
+    const delivery = this.originalDelivery();
+    if (!delivery) return;
+    this.printService.print(RomaneioPrint, { delivery });
   }
 
   printLabels(): void {
-    this.printMode.set('etiquetas');
-    setTimeout(() => window.print(), 0);
+    this.printService.print(PackingLabel, { labels: this.labels() });
   }
 
   goBack(): void {

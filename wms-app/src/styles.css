@@ -178,3 +178,13 @@ button:disabled {
     transparent 20px
   );
 }
+
+@page etiqueta {
+  margin: 0;
+}
+
+@media print {
+  body.printing-isolated app-root {
+    display: none;
+  }
+}

@@ -3,7 +3,7 @@ import { Login } from './features/login/pages/login';
 import { CargoOverview } from './features/cargo-overview/pages/cargo-overview';
 import { CargoRegistration } from './features/cargo-registration/pages/cargo-registration';
 import { CargoDetail } from './features/cargo-detail/cargo-detail';
-import { DeliveryDetail } from './features/delivery-detail/delivery-detail';
+import { DeliveryDetail } from './features/delivery-detail/pages/delivery-detail';
 import { ScanDelivery } from './features/scan-check/pages/scan-check';
 import { authGuard } from './core/guards/auth.guard';
 import { AppLayout } from './shared/app-layout/app-layout';

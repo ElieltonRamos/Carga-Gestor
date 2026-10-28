@@ -1,13 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
+  BadRequestException,
   HttpException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { promises as fs } from 'node:fs';
+import { basename, join } from 'node:path';
 import { PrismaService } from '../../core/database/prisma.service.js';
 import { Company, Prisma } from '../../../generated/prisma/client.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
+import { UpdateCompanyLogoDto } from './dto/update-company-logo.dto.js';
 import { CompanyResponseDto } from './dto/company-response.dto.js';
 
 const EDITABLE_FIELDS = [
@@ -23,6 +27,15 @@ const EDITABLE_FIELDS = [
   'state',
   'zipCode',
 ] as const;
+
+const LOGO_DIR = process.env.DATA_DIR ?? join(process.cwd(), 'data');
+const LOGO_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg' } as const;
+
+// Guardado em settings.logo; o arquivo em si fica em LOGO_DIR
+interface LogoSetting {
+  file: string;
+  mime: string;
+}
 
 @Injectable()
 export class CompanyService {
@@ -78,6 +91,14 @@ export class CompanyService {
     return changes;
   }
 
+  // Cópia do settings como objeto; ignora valor nulo ou de outro formato
+  private readSettings(company: Company): Record<string, unknown> {
+    const value = company.settings;
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? { ...(value as Record<string, unknown>) }
+      : {};
+  }
+
   async get(actor: string): Promise<CompanyResponseDto> {
     const company = await this.findCompany(actor);
     return this.toResponse(company);
@@ -119,6 +140,96 @@ export class CompanyService {
       return this.toResponse(updated);
     } catch (error) {
       this.rethrow(error, `Falha ao editar empresa (actor=${actor})`);
+    }
+  }
+
+  async getLogo(actor: string): Promise<{ logo: string | null }> {
+    try {
+      const company = await this.findCompany(actor);
+      const logo = this.readSettings(company).logo as LogoSetting | undefined;
+      if (!logo) return { logo: null };
+
+      try {
+        const buffer = await fs.readFile(join(LOGO_DIR, basename(logo.file)));
+        return {
+          logo: `data:${logo.mime};base64,${buffer.toString('base64')}`,
+        };
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          this.logger.warn(
+            `Arquivo da logo não encontrado (actor=${actor}, id=${company.id})`,
+          );
+          return { logo: null };
+        }
+        throw error;
+      }
+    } catch (error) {
+      this.rethrow(error, `Falha ao ler logo da empresa (actor=${actor})`);
+    }
+  }
+
+  async setLogo(
+    dto: UpdateCompanyLogoDto,
+    actor: string,
+  ): Promise<{ logo: string | null }> {
+    try {
+      const company = await this.findCompany(actor);
+
+      const match = /^data:(image\/(?:png|jpeg));base64,(.+)$/.exec(dto.logo);
+      if (!match) {
+        throw new BadRequestException('Logo deve ser PNG ou JPEG em base64');
+      }
+      const mime = match[1] as keyof typeof LOGO_EXT;
+      const file = `company-logo.${LOGO_EXT[mime]}`;
+
+      await fs.mkdir(LOGO_DIR, { recursive: true });
+      await fs.writeFile(join(LOGO_DIR, file), Buffer.from(match[2], 'base64'));
+
+      const settings = this.readSettings(company);
+      const previous = settings.logo as LogoSetting | undefined;
+      settings.logo = { file, mime };
+
+      await this.prisma.client.company.update({
+        where: { id: company.id },
+        data: { settings: settings as Prisma.InputJsonObject },
+      });
+
+      // Se a extensão mudou (png <-> jpg), apaga o arquivo antigo
+      if (previous && previous.file !== file) {
+        await fs.rm(join(LOGO_DIR, basename(previous.file)), { force: true });
+      }
+
+      this.logger.log(
+        `Logo da empresa atualizada (actor=${actor}, id=${company.id})`,
+      );
+      return { logo: dto.logo };
+    } catch (error) {
+      this.rethrow(
+        error,
+        `Falha ao atualizar logo da empresa (actor=${actor})`,
+      );
+    }
+  }
+
+  async removeLogo(actor: string): Promise<void> {
+    try {
+      const company = await this.findCompany(actor);
+      const settings = this.readSettings(company);
+      const previous = settings.logo as LogoSetting | undefined;
+      if (!previous) return;
+
+      delete settings.logo;
+      await this.prisma.client.company.update({
+        where: { id: company.id },
+        data: { settings: settings as Prisma.InputJsonObject },
+      });
+      await fs.rm(join(LOGO_DIR, basename(previous.file)), { force: true });
+
+      this.logger.log(
+        `Logo da empresa removida (actor=${actor}, id=${company.id})`,
+      );
+    } catch (error) {
+      this.rethrow(error, `Falha ao remover logo da empresa (actor=${actor})`);
     }
   }
 }

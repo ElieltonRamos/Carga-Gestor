@@ -1,0 +1,49 @@
+<div class="bg-bg-card border border-border rounded-card p-6 flex flex-col gap-4">
+  <h2 class="text-lg font-semibold">Logo da empresa</h2>
+  <p class="text-sm text-text-secondary">
+    Usada nas etiquetas impressas. PNG ou JPEG; prefira uma logo preta sobre fundo branco.
+  </p>
+
+  <div class="flex items-center gap-4">
+    <div class="h-20 w-40 flex items-center justify-center border border-border rounded bg-white">
+      @if (logoStorage.logo(); as logo) {
+        <img [src]="logo" alt="Logo da empresa" class="max-h-full max-w-full object-contain" />
+      } @else {
+        <span class="text-xs text-text-muted">Sem logo</span>
+      }
+    </div>
+
+    <div class="flex gap-2">
+      <label
+        class="h-10 px-4 inline-flex items-center rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm cursor-pointer"
+        [class.opacity-50]="busy()"
+        [class.pointer-events-none]="busy()"
+      >
+        {{ logoStorage.logo() ? 'Trocar logo' : 'Enviar logo' }}
+        <input
+          type="file"
+          accept="image/png,image/jpeg"
+          class="hidden"
+          (change)="onFileSelected($event)"
+        />
+      </label>
+
+      @if (logoStorage.logo()) {
+        <button
+          type="button"
+          (click)="remove()"
+          [disabled]="busy()"
+          class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-50"
+        >
+          Remover
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (errorMessage(); as message) {
+    <div class="rounded border border-border bg-bg-surface p-3 text-sm text-danger">
+      {{ message }}
+    </div>
+  }
+</div>

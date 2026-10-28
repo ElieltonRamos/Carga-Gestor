@@ -5,7 +5,7 @@ Sistema WMS para expedição e conferência de carregamentos em depósito.
 ## Funcionalidades
 - **Cadastro de carga (wizard):** romaneios com itens, peso, volumes e códigos.
 - **Documentos:** romaneios e etiquetas com código de barras para impressão.
-- **Conferência mobile (Android):** lista de cargas e bipagem de volumes por câmera, com progresso em tempo real.
+- **Conferência mobile (Android):** lista de cargas e bipagem de volumes pelo scanner do coletor, com progresso por carga, romaneio e item.
 - **Gestão (web):** dashboard, cargas, clientes, usuários e dados da empresa.
 
 # WMS: instruções para IA
@@ -37,7 +37,7 @@ Gestão de cargas, romaneios e conferência de carregamento.
 
 ## Modelo de dados
 `Cargo` 1:N `Delivery` (romaneio, com snapshot achatado do cliente: `clientName`, `clientCity`…) 1:N `DeliveryItem` 1:N `Volume`.
-- `Volume.code` (único) = `{cargoId}-{sequence}-{itemId}-{n}`. É o código da etiqueta e o que o `/scans` recebe.
+- `Volume.code` (único) = `{cargoId}-{sequence}-{itemId}-{n}`. É o código da etiqueta e o que o `/scans` recebe. Único por `@unique` no banco e por construção (todos os campos são inteiros). **Não é único entre bancos**: reset/restore do banco ou mais de uma instalação podem gerar o mesmo código em etiquetas diferentes.
 - `ScanLog`: result `OK|ERROR|WARNING|UNDO`, reason `NOT_FOUND|ALREADY_LOADED|WRONG_CARGO|CARGO_DEPARTED`, `device`.
 - `User`: role `ADMIN|OPERATOR|CHECKER`. Outros: `Client`, `Company` (registro único, licença).
 - `Cargo.status`: `OPEN | LOADING | DEPARTED`. `Cargo.pendingAtDeparture` guarda os volumes pendentes na expedição.
@@ -57,7 +57,7 @@ Gestão de cargas, romaneios e conferência de carregamento.
 - Scan: 200 sempre que a carga existe (404 se não). O resultado vem em `result` (`OK|WARNING|ERROR`) e `reason`. `ALREADY_LOADED` vira `WARNING`; as outras recusas viram `ERROR`. Precedência: `CARGO_DEPARTED`, `NOT_FOUND`, `WRONG_CARGO`, `ALREADY_LOADED`.
 - Primeira bipagem aceita: `OPEN` → `LOADING` e `startedAt`. O último volume preenche `endedAt`.
 - Undo: só com carga não expedida e volume carregado. 409: carga expedida, volume de outra carga ou volume não carregado. 404: volume inexistente. Limpa `endedAt` se a carga deixa de estar completa; o status continua `LOADING`.
-- Resposta: `result, reason, message, code, cargoId, cargoStatus, totalVolumes, loadedVolumes, volume { id, number, product, romaneioNumber, loaded, loadedAt } | null`. Não traz o id do `ScanLog`: o estorno é pelo `code`.
+- Resposta: `result, reason, message, code, cargoId, cargoStatus, totalVolumes, loadedVolumes, volume { id, number, product, romaneioNumber, loaded, loadedAt } | null`. Não traz o id do `ScanLog`: o estorno é pelo `code`. Formato exato da resposta do undo (?).
 - `GET /scans`: filtros `cargoId`, `userId`, `result`, `createdFrom`, `createdTo`, `page`, `limit`. Sem datas, lista todo o histórico. Cada item traz `userName`.
 
 ### Users
@@ -116,7 +116,7 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 | `cargas/novo` | `CargoRegistration` | wizard; envia tudo em um `POST` no último passo |
 | `cargas/:cargoId` | `CargoDetail` | status, expedir/reabrir/excluir, editar cabeçalho, adicionar/remover romaneio, polling de 10 s |
 | `cargas/:cargoId/entregas/:deliveryId` | `DeliveryDetail` | edita romaneio, cliente e itens; imprime romaneio e etiquetas |
-| `conferencia/:cargoId/:deliveryId` | `ScanDelivery` | validação; a bipagem real é no Android |
+| `conferencia/:cargoId/:deliveryId` | `ScanDelivery` | mock de validação (usa `CargoService` legado); a bipagem real é no Android |
 | `clientes` | `Clients` | formulário de cadastro no topo, tabela paginada com busca abaixo; editar (carrega no formulário) e excluir |
 | `configuracoes` | `Settings` | página única: `CompanyForm` + `UsersList` |
 
@@ -156,16 +156,19 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 
 ### Visão geral
 - Kotlin, Jetpack Compose (Material 3), Hilt, Retrofit com Gson. Base URL `http://<host>:3004/api`.
-- Escopo: login, listar cargas e bipar volumes por **câmera**. Não expede, reabre nem edita cargas.
+- Escopo: login, listar cargas e bipar volumes. Não expede, reabre nem edita cargas.
+- Dispositivo alvo: coletor RT40 (identifica-se como "BLD PDA", Android 10). O scanner está em **modo teclado**, com **sufixo Enter** ativo: o código é "digitado" no campo focado. O modo broadcast existe na configuração do aparelho (`com.bld.settings.scan`), mas não é usado.
+- Sem câmera: a leitura é feita pelo scanner de hardware.
 
 ### Estrutura
 - `data/api/ApiService`: interface Retrofit (`suspend`).
 - `data/model/`: `CargoSummary`, `CargoDetail`, `DeliveryDetail`, `DeliveryItemDetail`, `ScanRequest`, `ScanResponse`, `ScanVolume`, `ScanLog`, `PaginatedResponse`, enums (`CargoStatus`, `ScanResult`, `ScanReason`).
-- `data/repository/`: `AuthRepository` (login, token, logout), `CargoRepository` (cargas e scans).
+- `data/repository/`: `AuthRepository` (login, token, logout), `CargoRepository` (cargas, scans, `getCargo`).
 - `util/`: `Resource`, `NetworkErrorHandler`, `JwtDecoder`, `TokenManager`.
-- `ui/navigation/`: `ScreenRoutes`, `buildNavGraph`.
+- `ui/navigation/`: `ScreenRoutes` (`LOGIN`, `MAIN`, `CARGO_DETAIL`, `SCAN`, `SETTINGS`), `buildNavGraph`.
 - `ui/theme/`: `Color`, `Theme`, `Type`, `ThemeManager`.
-- `ui/screens/login/`: `LoginScreen`, `LoginViewModel`. `ui/screens/cargolist/`: `CargoListScreen`, `CargoListViewModel`.
+- `ui/screens/login/`: `LoginScreen`, `LoginViewModel`. `ui/screens/cargos/`: `CargoListScreen`, `CargoListViewModel`.
+- `ui/screens/scan/`: `ScanScreen` (inclui `CodeInput`, `SummaryHeader`, `FeedbackBanner`, `DeliveryCard`), `ScanViewModel`.
 
 ### Camadas
 - Screen (Composable) observa `uiState` com `collectAsStateWithLifecycle` e dispara ações no ViewModel.
@@ -177,9 +180,10 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 
 ### Fluxo
 1. `login`: ao abrir, `checkSavedToken()` (token salvo e não expirado, via `JwtDecoder`) leva direto a `main`. No login manual: `POST /users/login`, decodifica o JWT (`userId`, `username`, `role`), salva token, username e role e vai a `main`. Erro vira snackbar.
-2. `main`: lista de cargas; tocar numa carga navega para `scan/{cargoId}`.
-3. Sair: `AuthRepository.logout()` limpa o token e depois navega para `login` com `popUpTo(main) { inclusive }`.
-4. Validação do login: usuário e senha vazios são inválidos; o erro aparece ao sair do campo ou ao enviar.
+2. `main`: lista de cargas; tocar numa carga navega para `scan/{cargoId}` (o argumento opcional `deliveryId` da rota é ignorado).
+3. `scan/{cargoId}`: o usuário só bipa; o backend identifica volume e romaneio pelo código.
+4. Sair: `AuthRepository.logout()` limpa o token e depois navega para `login` com `popUpTo(main) { inclusive }`.
+5. Validação do login: usuário e senha vazios são inválidos; o erro aparece ao sair do campo ou ao enviar.
 
 ### Lista de cargas
 - Filtros por `createdAt` (`createdFrom`/`createdTo`, `YYYY-MM-DD`), com datas em America/Sao_Paulo (`LocalDate.now(ZoneId)`):
@@ -189,13 +193,17 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
   - Data início / data fim: abrem `DatePicker` e mudam o filtro para `CUSTOM`. Início > fim mostra snackbar e não recarrega.
 - `reload()` cancela a carga em andamento e volta à página 1. `loadMore()` pede `page + 1` quando faltam até 3 itens para o fim da lista, sem carga em andamento e com `page < totalPages`; os resultados são mesclados com `distinctBy { id }`. Página de 20.
 - Aparecem todas as cargas, inclusive `DEPARTED`. Card: `loadOrder`, badge (`OPEN` Aberta, `LOADING` Carregando, `DEPARTED` Expedida), motorista · caminhão, `loadDate`, número de romaneios e barra `loadedVolumes/totalVolumes`.
+- Ao voltar da conferência, a lista fica defasada: `refreshSilently()` em `ON_RESUME` (`load(reset = true, silent = true)`, sem spinner de tela cheia) (?).
 
-### Bipagem (a implementar)
-- A câmera lê o `Volume.code` (`{cargoId}-{sequence}-{itemId}-{n}`). Biblioteca de leitura e formato do código: (?).
-- `CargoRepository.scan(code, cargoId)` chama `POST /scans` com o header `x-device-id` = `"$MODEL ($ANDROID_ID)"` (até 100 caracteres).
-- A resposta é 200 mesmo quando recusa: o feedback vem de `result` (`OK` carregado, `WARNING` já carregado, `ERROR` com `reason`) e de `message`. 404 significa carga inexistente.
-- O progresso e o status da tela vêm da própria resposta (`totalVolumes`, `loadedVolumes`, `cargoStatus`), sem recarregar a carga.
-- Desfazer: `CargoRepository.undoScan(code, cargoId)` com o `code` da última bipagem `OK` (a resposta não traz id de `ScanLog`). Erros 404/409 chegam como `Resource.Error`.
+### Bipagem (`scan/{cargoId}`)
+- Entrada: scanner em modo teclado digita no `CodeInput`, um `EditText` nativo (`AndroidView`) com foco pedido uma vez (`post { requestFocus() }`). O Enter (sufixo do scanner, teclado ou ação "Concluído") dispara o envio; o botão de enviar também. `showSoftInputOnFocus = false`: o teclado não abre; o botão "Usar teclado" libera a digitação manual (útil em outros aparelhos).
+- O texto fica só no `EditText` (o Compose ouve via `TextWatcher`); a limpeza após o envio usa `clearTick` + `text.clear()`.
+- `ScanViewModel.onCodeScanned(code)`: ignora se `isProcessing`; com `removeMode` chama `removeByCode`, senão `scanCode`.
+- `scanCode`: `CargoRepository.scan(code, cargoId)` → `POST /scans` com header `x-device-id` = `"$MODEL ($ANDROID_ID)"` (até 100 caracteres). Resposta 200 mesmo quando recusa: o feedback vem de `result` e `reason`; 404 = carga inexistente.
+- Totais e status do topo vêm da resposta do scan. Após `OK` (e após remoção), a carga é recarregada (`GET /cargos/{id}`) para atualizar o progresso por romaneio e item, que a resposta do scan não traz.
+- Modo "Remover um volume": o próximo código vai para `POST /scans/undo` (`{ code, cargoId }`) e o modo desliga sozinho após sucesso. Erros 404/409 chegam como `Resource.Error` (banner de erro).
+- Feedback (banner colorido, texto simples): `OK` "Volume carregado" (verde), `WARNING` "Este volume já foi bipado" (amarelo), `UNDO` "Volume removido" (amarelo), `ERROR` por `reason`: "Código não reconhecido", "Volume de outra carga", "Esta carga já saiu".
+- Layout: resumo (X de Y volumes + barra colorida), campo de código, banners, lista de romaneios (cidade, cliente, progresso e itens com `carregados/total`). Cores: verde completo, amarelo parcial, cinza pendente.
 - Carga `DEPARTED` recusa a bipagem com `CARGO_DEPARTED`.
 
 ### Tema
@@ -210,6 +218,14 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 - O scroll da tela de login com teclado depende de `adjustResize` no Manifest e de `enableEdgeToEdge()` (?).
 - `@SuppressLint("HardwareIds")` não vale em propriedade `by lazy`: fica na função que lê o `ANDROID_ID`.
 - Dois contratos que mudaram: o undo recebe `{ code, cargoId }` (não `scanLogId`/`reason`) e `GET /scans` filtra por `createdFrom`/`createdTo`.
+- `EditText.setText` dentro do `update` do `AndroidView` derrubou o app (`ComposeRuntimeError`, `restartInput` + `focusSearch` durante a aplicação de mudanças): limpar com `text.clear()` e não sincronizar texto do Compose para o `EditText`.
+- `FocusRequester` sem `Modifier.focusRequester` dá `IllegalStateException`: o `CodeInput` é um `EditText`, não usar `FocusRequester`.
+- `InterceptPlatformTextInput` bloqueou a entrada do scanner (nada era digitado): não usar.
+- O RT40 sem sufixo Enter só preenche o campo; com o sufixo ativo o envio é automático.
+- O scanner lê EAN (ex.: `7894900011715`), que a API devolve como `NOT_FOUND`; só o `Volume.code` é aceito.
+- Testar sem o aparelho: `adb shell input text "2-1-1-1" && adb shell input keyevent 66` (digita e envia Enter no campo focado).
+- Com mais de um dispositivo no `adb`, usar `adb -s <serial>`; aparelho `offline` não gera logcat.
+- Warning `OnBackInvokedCallback is not enabled`: `android:enableOnBackInvokedCallback="true"` no `<application>`.
 
 ## Pendências
 
@@ -227,12 +243,16 @@ Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switc
 - [x] CSS: `avatar-gradient`, `nav-active`, `bg-grid`, `--color-bg-sidebar`
 - [x] Decisão sobre o `ScanDelivery` / rota `conferencia/...`
 - [x] Android: tema, login, repositórios, lista de cargas com filtros e `x-device-id`
+- [x] Android: tela de bipagem (`ScanScreen`/`ScanViewModel`): entrada pelo scanner em modo teclado, feedback por `result`/`reason`, progresso por romaneio e item, modo remover
+- [x] Android: `ScreenRoutes` sem `CARGO_LIST` e sealed `Screen` removida; `ScanPlaceholderScreen` removida do grafo (?)
 
 ### Em aberto (Android)
-- [ ] **Tela de bipagem por câmera** (`scan/{cargoId}`): leitura, feedback por `result`/`reason`, progresso e desfazer a última bipagem
-- [ ] **Confirmar que a etiqueta (`PackingLabel`) imprime código de barras ou QR real do `Volume.code`** (a classe `.barcode` do `styles.css` é só um desenho em CSS)
-- [ ] **Limpar o `ApiService`**: remover `departCargo` e `reopenCargo`; `getCompany()` retorna `User` (tipo errado)
-- [ ] **Remover código sem uso**: `MainPlaceholderScreen`, a sealed `Screen` e `CARGO_LIST`
+- [ ] **Teste ponta a ponta no RT40 com etiqueta real**: Code 39 chega como `{cargoId}-{sequence}-{itemId}-{n}` (sem `*`)? `OK`, `WARNING` na repetição e modo remover; confirmar o formato da resposta de `POST /scans/undo` (?)
+- [ ] **Confirmar que a etiqueta (`PackingLabel`) imprime código de barras real do `Volume.code`** (a classe `.barcode` do `styles.css` é só um desenho em CSS; a etiqueta mostra `*2-1-1-1*`, padrão Code 39)
+- [ ] **Recarregar a lista de cargas ao voltar da conferência** (`refreshSilently` em `ON_RESUME`) (?)
+- [ ] **Limpar o `ApiService`**: remover `departCargo` e `reopenCargo`; `getCompany()` retorna `User` (tipo errado); atualizar o KDoc do `undoScan` (`{ code, cargoId }`); remover `ScanUndoRequest`
+- [ ] **Remover código sem uso**: `HardwareScanEffect`, `KeyboardScanCapture`, `undoLast`/`lastOkCode` no `ScanViewModel`, `Log.d` de depuração, `MainPlaceholderScreen` (?)
 - [ ] **Rotas `cargo_detail` e `settings`**: ainda são placeholders; implementar ou remover
+- [ ] **Unicidade do `Volume.code` entre bancos**: decidir se há risco (reset do banco ou mais de uma instalação com etiquetas em circulação)
 
 Backend e frontend web: sem pendências.

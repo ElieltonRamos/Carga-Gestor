@@ -1,5 +1,6 @@
 package com.carga_gestor.wms_mobile.ui.screens.scan
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -32,6 +33,7 @@ data class ScanUiState(
     val loadedVolumes: Int = 0,
     val feedback: ScanFeedback? = null,
     val lastOkCode: String? = null,
+    val removeMode: Boolean = false,
     val isProcessing: Boolean = false,
     val error: String? = null
 )
@@ -47,7 +49,9 @@ class ScanViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
 
-    init { reload() }
+    init {
+        reload()
+    }
 
     fun reload() {
         _uiState.update { it.copy(isLoading = true, error = null) }
@@ -71,8 +75,24 @@ class ScanViewModel @Inject constructor(
         }
     }
 
-    fun onCodeScanned(code: String) {
+    fun toggleRemoveMode() {
         if (_uiState.value.isProcessing) return
+        _uiState.update { it.copy(removeMode = !it.removeMode, feedback = null, error = null) }
+    }
+
+    fun onCodeScanned(code: String) {
+        Log.d("ScanVM", "onCodeScanned code=$code removeMode=${_uiState.value.removeMode} processing=${_uiState.value.isProcessing}")
+        if (_uiState.value.isProcessing) return
+        if (_uiState.value.removeMode) removeByCode(code) else scanCode(code)
+    }
+
+    fun undoLast() {
+        val code = _uiState.value.lastOkCode ?: return
+        if (_uiState.value.isProcessing) return
+        removeByCode(code)
+    }
+
+    private fun scanCode(code: String) {
         _uiState.update { it.copy(isProcessing = true, error = null) }
         viewModelScope.launch {
             try {
@@ -90,18 +110,7 @@ class ScanViewModel @Inject constructor(
         }
     }
 
-    private fun applyScan(res: ScanResponse) = _uiState.update {
-        it.copy(
-            totalVolumes = res.totalVolumes,
-            loadedVolumes = res.loadedVolumes,
-            feedback = ScanFeedback(res.result, res.reason, res.message, res.volume),
-            lastOkCode = if (res.result == ScanResult.OK) res.code else it.lastOkCode
-        )
-    }
-
-    fun undoLast() {
-        val code = _uiState.value.lastOkCode ?: return
-        if (_uiState.value.isProcessing) return
+    private fun removeByCode(code: String) {
         _uiState.update { it.copy(isProcessing = true, error = null) }
         viewModelScope.launch {
             try {
@@ -109,10 +118,13 @@ class ScanViewModel @Inject constructor(
                     is Resource.Success -> {
                         _uiState.update {
                             it.copy(
-                                totalVolumes = r.data.totalVolumes,
+                                totalVolumes = r.data.totalVolumes, // (?) formato da resposta do undo
                                 loadedVolumes = r.data.loadedVolumes,
-                                feedback = ScanFeedback(ScanResult.UNDO, null, r.data.message, r.data.volume),
-                                lastOkCode = null
+                                feedback = ScanFeedback(
+                                    ScanResult.UNDO, null, r.data.message, r.data.volume
+                                ),
+                                lastOkCode = if (it.lastOkCode == code.trim()) null else it.lastOkCode,
+                                removeMode = false
                             )
                         }
                         refreshCargo()
@@ -124,5 +136,15 @@ class ScanViewModel @Inject constructor(
                 _uiState.update { it.copy(isProcessing = false) }
             }
         }
+    }
+
+    private fun applyScan(res: ScanResponse) = _uiState.update {
+        Log.d("ScanVM", "scan result=${res.result} reason=${res.reason} loaded=${res.loadedVolumes}/${res.totalVolumes}")
+        it.copy(
+            totalVolumes = res.totalVolumes,
+            loadedVolumes = res.loadedVolumes,
+            feedback = ScanFeedback(res.result, res.reason, res.message, res.volume),
+            lastOkCode = if (res.result == ScanResult.OK) res.code else it.lastOkCode
+        )
     }
 }

@@ -1,44 +1,10 @@
 <div class="hidden print:flex flex-col items-center gap-0 [page:etiqueta]">
   @for (label of labels(); track label.code + '-' + label.volumeIndex) {
-    <div
-      class="print:break-after-page print:last:break-after-auto w-[100mm] h-[50mm] overflow-hidden border border-print-ink bg-print-bg text-print-ink flex flex-col p-[2mm]"
-    >
-      <div class="flex justify-between items-end border-b border-print-ink pb-[1mm]">
-        <div class="text-lg font-black tracking-tighter leading-none">WMS</div>
-        <div class="text-right leading-none">
-          <div class="text-[7px] font-bold uppercase tracking-wide">Destino</div>
-          <div class="text-sm font-bold">{{ label.destino || '—' }}</div>
-        </div>
-      </div>
-
-      <div class="mt-[1mm] min-h-0">
-        <div class="text-[7px] font-bold uppercase tracking-wide leading-none">Produto</div>
-        <div class="text-xs font-bold leading-tight line-clamp-2">{{ label.product }}</div>
-      </div>
-
-      <div class="flex justify-between mt-[1mm] border-t border-print-ink pt-[1mm] leading-none">
-        <div>
-          <div class="text-[7px] font-bold uppercase tracking-wide">Volume</div>
-          <div class="text-sm font-bold">{{ label.volumeIndex }}/{{ label.volumeTotal }}</div>
-        </div>
-        <div class="text-center">
-          <div class="text-[7px] font-bold uppercase tracking-wide">Entrega</div>
-          <div class="text-sm font-bold">
-            Nº {{ label.deliverySequence.toString().padStart(3, '0') }}
-          </div>
-        </div>
-        <div class="text-right">
-          <div class="text-[7px] font-bold uppercase tracking-wide">Peso</div>
-          <div class="text-sm font-bold">{{ label.weight ?? '—' }}kg</div>
-        </div>
-      </div>
-
-      <div class="mt-auto border-t border-print-ink pt-[1mm] flex flex-col items-center">
-        <app-barcode class="w-full h-[10mm]" [value]="label.code || 'SEM-CODIGO'" />
-        <div class="tracking-widest text-[9px] font-bold leading-none mt-[0.5mm]">
-          {{ label.code || 'SEM-CODIGO' }}
-        </div>
-      </div>
-    </div>
+    <app-label-card
+      class="print:break-after-page print:last:break-after-auto"
+      [label]="label"
+      [companyName]="companyName()"
+      [logo]="logo()"
+    />
   }
 </div>

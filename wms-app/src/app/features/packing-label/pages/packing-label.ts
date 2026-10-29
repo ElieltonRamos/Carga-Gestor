@@ -1,22 +1,16 @@
 import { Component, input } from '@angular/core';
-import { Barcode } from '../components/barcode';
+import { LabelCard, ProductLabel } from '../components/label-card';
 
-export interface ProductLabel {
-  destino?: string;
-  product: string;
-  volumeIndex: number;
-  volumeTotal: number;
-  weight?: number;
-  deliverySequence: number;
-  code?: string;
-}
+export type { ProductLabel };
 
 @Component({
   selector: 'app-packing-label',
-  imports: [Barcode],
+  imports: [LabelCard],
   templateUrl: './packing-label.html',
   host: { class: 'block' },
 })
 export class PackingLabel {
   labels = input<ProductLabel[]>([]);
+  companyName = input<string>('');
+  logo = input<string | null>(null);
 }

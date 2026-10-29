@@ -8,10 +8,13 @@ import { CargosService } from '../../cargo-overview/services/cargos.service';
 import { Cargo, CargoDelivery, CargoDeliveryDto } from '../../cargo-overview/types/cargo';
 import { PrintService } from '../../../core/services/print.service';
 import { RomaneioPrint } from '../components/romaneio-print';
+import { CompanyService } from '../../settings/services/company.service';
+import { LogoStorage } from '../../settings/services/logo.service';
+import { LabelCard } from '../../packing-label/components/label-card';
 
 @Component({
   selector: 'app-delivery-detail',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LabelCard],
   templateUrl: './delivery-detail.html',
 })
 export class DeliveryDetail {
@@ -19,7 +22,10 @@ export class DeliveryDetail {
   private readonly router = inject(Router);
   private readonly cargosService = inject(CargosService);
   private readonly fb = inject(FormBuilder);
+  private readonly companyService = inject(CompanyService);
   private readonly printService = inject(PrintService);
+  protected readonly logoStorage = inject(LogoStorage);
+  companyName = signal('');
 
   loading = signal(true);
   isSaving = signal(false);
@@ -66,6 +72,10 @@ export class DeliveryDetail {
       },
       error: () => this.loading.set(false),
     });
+    firstValueFrom(this.companyService.get())
+      .then((c) => this.companyName.set(c.tradeName || c.name))
+      .catch(() => undefined);
+    this.logoStorage.load().catch(() => undefined);
   }
 
   get itemsControls() {
@@ -82,11 +92,19 @@ export class DeliveryDetail {
       return Array.from({ length: total }, (_, i) => ({
         destino: delivery.clientCity,
         product: item.product,
+        notes: item.notes ?? undefined,
         volumeIndex: i + 1,
         volumeTotal: total,
         weight: item.weight ?? undefined,
         deliverySequence: delivery.sequence,
         code: `${cargo.id}-${delivery.sequence}-${item.id}-${i + 1}`,
+        clientName: delivery.clientName,
+        clientAddress: delivery.clientAddress ?? undefined,
+        clientNeighborhood: delivery.clientNeighborhood ?? undefined,
+        clientCity: delivery.clientCity,
+        clientState: delivery.clientState ?? undefined,
+        clientZipCode: delivery.clientZipCode ?? undefined,
+        clientPhone: delivery.clientPhone ?? undefined,
       }));
     });
   });
@@ -136,7 +154,11 @@ export class DeliveryDetail {
   }
 
   printLabels(): void {
-    this.printService.print(PackingLabel, { labels: this.labels() });
+    this.printService.print(PackingLabel, {
+      labels: this.labels(),
+      companyName: this.companyName(),
+      logo: this.logoStorage.logo(),
+    });
   }
 
   goBack(): void {

@@ -1,0 +1,43 @@
+\xEF\xBB\xBFCONTRATO DE LICENÇA DE USO DE SOFTWARE - WMS SERVER
+
+Copyright (c) 2026 Grupo-Sae. Todos os direitos reservados.
+
+Leia com atenção antes de instalar. Ao instalar, copiar ou utilizar o WMS Server ("Software"), você declara que leu, entendeu e concorda com os termos abaixo. Se não concordar, cancele a instalação e não utilize o Software.
+
+1. CONCESSÃO DE LICENÇA
+A Grupo-Sae ("Licenciante") concede ao licenciado uma licença limitada, não exclusiva, intransferível e revogável para instalar e usar o Software, na quantidade de instalações, usuários e dispositivos previstos na licença adquirida, exclusivamente para fins internos de sua atividade.
+
+2. RESTRIÇÕES
+É proibido, salvo autorização prévia e escrita da Licenciante ou quando a lei permitir expressamente:
+a) copiar, distribuir, sublicenciar, alugar, vender ou disponibilizar o Software a terceiros;
+b) descompilar, desmontar, realizar engenharia reversa ou tentar obter o código-fonte;
+c) modificar, adaptar ou criar obras derivadas do Software;
+d) remover ou alterar avisos de propriedade, identificações ou mecanismos de proteção;
+e) burlar, desativar ou manipular o sistema de licenciamento, incluindo chaves, tokens e controles de data;
+f) utilizar o Software para fins ilícitos ou que violem direitos de terceiros.
+
+3. PROPRIEDADE INTELECTUAL
+O Software, sua documentação, marcas e demais elementos são de propriedade exclusiva da Licenciante e protegidos pela legislação brasileira e por tratados internacionais. Esta licença não transfere ao licenciado nenhum direito de propriedade.
+
+4. CHAVE DE LICENÇA E VALIDAÇÃO
+O uso do Software depende de chave de licença válida, vinculada ao CNPJ do licenciado. O Software poderá validar a licença periodicamente e enviar informações de uso necessárias a essa validação. A licença é pessoal e não pode ser compartilhada nem transferida sem autorização da Licenciante. O uso fora dos limites licenciados ou sem licença válida poderá resultar na suspensão do Software.
+
+5. DADOS E PRIVACIDADE
+Os dados inseridos no Software (cargas, romaneios, clientes, usuários e demais registros) permanecem sob controle do licenciado, que é responsável por sua legalidade, exatidão e guarda, inclusive pelo cumprimento da Lei Geral de Proteção de Dados (Lei nº 13.709/2018) quanto aos dados pessoais que tratar. O licenciado é responsável por manter backups regulares do banco de dados e por proteger as credenciais de acesso e o arquivo de configuração (.env).
+
+6. SUPORTE E ATUALIZAÇÕES
+Suporte técnico e atualizações seguem as condições do contrato comercial firmado com a Licenciante. Salvo previsão em contrário, a Licenciante não é obrigada a fornecer novas versões.
+
+7. GARANTIA
+O Software é fornecido "no estado em que se encontra". Na extensão permitida pela lei, a Licenciante não garante que o Software seja livre de erros, que opere de forma ininterrupta ou que atenda a necessidades específicas do licenciado.
+
+8. LIMITAÇÃO DE RESPONSABILIDADE
+Na extensão permitida pela lei, a Licenciante não responde por lucros cessantes, perda de dados, interrupção de atividades ou danos indiretos decorrentes do uso ou da impossibilidade de uso do Software. A responsabilidade total da Licenciante limita-se ao valor efetivamente pago pelo licenciado pela licença nos 12 (doze) meses anteriores ao evento que originou a reclamação.
+
+9. VIGÊNCIA E RESCISÃO
+Esta licença vigora enquanto o licenciado cumprir estes termos e mantiver a licença válida. A violação de qualquer cláusula, em especial as cláusulas 2 e 4, rescinde a licença automaticamente, sem prejuízo de outras medidas cabíveis. Após a rescisão, o licenciado deve cessar o uso e desinstalar o Software.
+
+10. DISPOSIÇÕES GERAIS
+Este contrato é regido pelas leis da República Federativa do Brasil. Se qualquer cláusula for considerada inválida, as demais permanecem em vigor. Eventuais controvérsias serão resolvidas no foro da comarca de [CIDADE/UF], com renúncia a qualquer outro, por mais privilegiado que seja.
+
+Suporte: elieltonramos14@gmail.com

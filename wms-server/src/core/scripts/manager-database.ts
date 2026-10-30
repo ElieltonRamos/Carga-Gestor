@@ -1,15 +1,13 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as mariadb from 'mariadb';
-import * as bcrypt from 'bcryptjs';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { dumpDatabase } from './database-dump';
+import { runSeeds } from './database-seed';
 
 // ============================================
 // CONFIGURAÇÃO DO BANCO
@@ -22,7 +20,7 @@ const dbConfig = {
   ),
   user: process.env.DATABASE_USER || 'root',
   password: process.env.DATABASE_PASSWORD || 'password',
-  database: process.env.DATABASE_NAME || 'db_blue_clinic',
+  database: process.env.DATABASE_NAME || 'db_carga_gestor',
   port: Number(process.env.DATABASE_PORT) || 3306,
   allowPublicKeyRetrieval: true,
 };
@@ -62,17 +60,15 @@ console.log('');
 // ============================================
 
 async function ensureDatabaseExists(): Promise<void> {
-  const conn = await mariadb.createConnection({
-    host: dbConfig.host,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    port: dbConfig.port,
-    allowPublicKeyRetrieval: true,
-  });
+  const { database: _database, ...serverConfig } = dbConfig;
+  const conn = await mariadb.createConnection(serverConfig);
 
-  await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-  await conn.end();
-  console.log(`✅ Banco '${dbConfig.database}' verificado/criado`);
+  try {
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+    console.log(`✅ Banco '${dbConfig.database}' verificado/criado`);
+  } finally {
+    await conn.end();
+  }
 }
 
 async function ensureMigrationsTable(conn: mariadb.Connection): Promise<void> {
@@ -148,7 +144,6 @@ async function createDatabase(): Promise<void> {
     password: dbConfig.password,
     database: dbConfig.database,
     port: dbConfig.port,
-    allowPublicKeyRetrieval: true,
   });
 
   try {
@@ -172,13 +167,8 @@ async function runMigrations(): Promise<void> {
   }
 
   const conn = await mariadb.createConnection({
-    host: dbConfig.host,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    database: dbConfig.database,
-    port: dbConfig.port,
+    ...dbConfig,
     multipleStatements: true,
-    allowPublicKeyRetrieval: true,
   });
 
   try {
@@ -239,50 +229,6 @@ async function runMigrations(): Promise<void> {
 }
 
 // ============================================
-// OPERAÇÕES DE SEEDS
-// ============================================
-
-async function runSeeds(): Promise<void> {
-  console.log('\n🌱 Rodando seeds...\n');
-
-  const conn = await mariadb.createConnection({
-    host: dbConfig.host,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    database: dbConfig.database,
-    port: dbConfig.port,
-    allowPublicKeyRetrieval: true,
-  });
-
-  try {
-    // Seed Company
-    console.log('   ⏳ Executando: company-seed');
-    await conn.query(`
-  INSERT INTO company (tradeName, corporateName, cnpj, phone, email, street, number, neighborhood, city, state, cityCode, licenseKey, createdAt, updatedAt)
-  VALUES ('Blue Clinic', 'Blue Clinic Ltda', '00000000000100', '(38) 99999-9999', 'contato@blueclinic.com.br', 'Rua Exemplo', '123', 'Centro', 'Espinosa', 'MG', '3124302', '53fd9d55780f1646ed650da9a0b465bbb1fa6da70c88f6f22c50ecf159170642', NOW(), NOW())
-  ON DUPLICATE KEY UPDATE cnpj = cnpj
-`);
-    console.log('   ✅ Concluído: company-seed');
-
-    // Seed User (admin)
-    console.log('   ⏳ Executando: user-seed');
-    const [company] = await conn.query<{ id: number }[]>(
-      `SELECT id FROM company WHERE cnpj = '00000000000100'`,
-    );
-    const hashAdmin = await bcrypt.hash('impostoeroubo', 10);
-    await conn.query(
-      `INSERT INTO user (companyId, username, password, role, active, createdAt, updatedAt)
-      VALUES (?, 'root', ?, 'admin', true, NOW(), NOW())
-      ON DUPLICATE KEY UPDATE username = username`,
-      [company.id, hashAdmin],
-    );
-    console.log('   ✅ Concluído: user-seed');
-  } finally {
-    await conn.end();
-  }
-}
-
-// ============================================
 // OPERAÇÕES DE RESET
 // ============================================
 
@@ -293,7 +239,6 @@ async function dropAllTables(): Promise<void> {
     password: dbConfig.password,
     database: dbConfig.database,
     port: dbConfig.port,
-    allowPublicKeyRetrieval: true,
   });
 
   try {
@@ -317,6 +262,13 @@ async function dropAllTables(): Promise<void> {
 }
 
 async function resetDatabase(): Promise<void> {
+  if (!migrationsDir) {
+    console.log(
+      '❌ Pasta de migrations não encontrada. Reset cancelado, nada foi removido.\n',
+    );
+    return;
+  }
+
   console.log('\n🔴 RESETANDO banco de dados...\n');
 
   await ensureDatabaseExists();
@@ -325,7 +277,7 @@ async function resetDatabase(): Promise<void> {
   await dropAllTables();
 
   await runMigrations();
-  await runSeeds();
+  await runSeeds(dbConfig);
 
   console.log('✅ Banco resetado com sucesso!\n');
 }
@@ -345,7 +297,6 @@ async function showStatus(): Promise<void> {
       password: dbConfig.password,
       database: dbConfig.database,
       port: dbConfig.port,
-      allowPublicKeyRetrieval: true,
     });
 
     dbOnline = true;
@@ -422,10 +373,8 @@ async function execBackup(): Promise<void> {
 
   manageBackupFiles(backupDir, 5);
 
-  const command = `mysqldump -h 127.0.0.1 -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} > "${backupFile}"`;
-
   try {
-    await execAsync(command);
+    await dumpDatabase(dbConfig, backupFile);
     const stats = fs.statSync(backupFile);
     const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
 
@@ -438,6 +387,51 @@ async function execBackup(): Promise<void> {
     );
     throw err;
   }
+}
+
+async function* readSqlStatements(file: string): AsyncGenerator<string> {
+  let buffer = '';
+  let quote: string | null = null;
+  let escaped = false;
+  let lineComment = false;
+
+  for await (const chunk of fs.createReadStream(file, { encoding: 'utf-8' })) {
+    for (const char of chunk as string) {
+      if (lineComment) {
+        if (char === '\n') lineComment = false;
+        continue;
+      }
+
+      if (quote) {
+        buffer += char;
+        if (escaped) {
+          escaped = false;
+        } else if (char === '\\' && quote !== '`') {
+          escaped = true;
+        } else if (char === quote) {
+          quote = null;
+        }
+        continue;
+      }
+
+      if (char === "'" || char === '"' || char === '`') {
+        quote = char;
+        buffer += char;
+      } else if (char === '-' && buffer.endsWith('-')) {
+        buffer = buffer.slice(0, -1);
+        lineComment = true;
+      } else if (char === ';') {
+        const statement = buffer.trim();
+        buffer = '';
+        if (statement) yield statement;
+      } else {
+        buffer += char;
+      }
+    }
+  }
+
+  const rest = buffer.trim();
+  if (rest) yield rest;
 }
 
 async function restoreBackup(): Promise<void> {
@@ -459,16 +453,25 @@ async function restoreBackup(): Promise<void> {
   console.log(`   📁 Arquivo encontrado: ${backupFile}`);
   console.log(`   📊 Tamanho: ${sizeMB} MB\n`);
 
-  const command = `mysql -h 127.0.0.1 -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} < "${backupFile}"`;
+  console.log('📋 Removendo tabelas existentes...\n');
+  await dropAllTables();
+
+  const conn = await mariadb.createConnection(dbConfig);
 
   try {
-    await execAsync(command);
-    console.log(`   ✅ Backup restaurado com sucesso!\n`);
+    let count = 0;
+    for await (const statement of readSqlStatements(backupFile)) {
+      await conn.query(statement);
+      count++;
+    }
+    console.log(`   ✅ Backup restaurado com sucesso! (${count} statements)\n`);
   } catch (err) {
     console.log(
       `   ❌ Erro na restauração: ${err instanceof Error ? err.message : err}\n`,
     );
     throw err;
+  } finally {
+    await conn.end().catch(() => undefined);
   }
 }
 
@@ -477,18 +480,18 @@ async function restoreBackup(): Promise<void> {
 // ============================================
 
 function showMenu(): void {
-  console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   🗄️  GERENCIADOR DE BANCO - BLUE CLINIC  ║');
-  console.log('╠════════════════════════════════════════╣');
-  console.log('║  1 - Criar banco de dados              ║');
-  console.log('║  2 - Rodar migrations                  ║');
-  console.log('║  3 - Rodar seeds                       ║');
-  console.log('║  4 - Resetar banco (drop + migrate)    ║');
-  console.log('║  5 - Ver status                        ║');
-  console.log('║  6 - Fazer backup                      ║');
-  console.log('║  7 - Restaurar backup (backup.sql)     ║');
-  console.log('║  8 - Sair                              ║');
-  console.log('╚════════════════════════════════════════╝\n');
+  console.log('\n╔════════════════════════════════════════════╗');
+  console.log('║   🗄️  GERENCIADOR DE BANCO - CARGA GESTOR  ║');
+  console.log('╠════════════════════════════════════════════╣');
+  console.log('║  1 - Criar banco de dados                  ║');
+  console.log('║  2 - Rodar migrations                      ║');
+  console.log('║  3 - Rodar seeds                           ║');
+  console.log('║  4 - Resetar banco (drop + migrate)        ║');
+  console.log('║  5 - Ver status                            ║');
+  console.log('║  6 - Fazer backup                          ║');
+  console.log('║  7 - Restaurar backup (backup.sql)         ║');
+  console.log('║  8 - Sair                                  ║');
+  console.log('╚════════════════════════════════════════════╝\n');
 }
 
 async function promptUser(question: string): Promise<string> {
@@ -506,7 +509,7 @@ async function promptUser(question: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  console.log('\n🚀 Blue Clinic - Gerenciador de Banco de Dados\n');
+  console.log('\n🚀 Carga Gestor - Gerenciador de Banco de Dados\n');
   console.log(
     `📍 Banco: ${dbConfig.database}@${dbConfig.host}:${dbConfig.port}`,
   );
@@ -524,7 +527,7 @@ async function main(): Promise<void> {
           await runMigrations();
           break;
         case '3':
-          await runSeeds();
+          await runSeeds(dbConfig);
           break;
         case '4': {
           const confirm = await promptUser(

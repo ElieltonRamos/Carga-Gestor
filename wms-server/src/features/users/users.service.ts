@@ -263,10 +263,9 @@ export class UsersService {
     return this.omitPassword(user);
   }
 
-  // O tipo de retorno voltou a Promise<{ token: string }>, porque sem a licença não existe licenseWarning.
-  // Ao reativar a licença, volte para Promise<{ token: string; licenseWarning?: string }>,
-  // descomente os dois blocos e apague o return { token };.
-  async login(loginDto: LoginDto): Promise<{ token: string }> {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ token: string; licenseWarning?: string }> {
     const { username, password } = loginDto;
 
     void this.licenseService.sendUsageReport(true);
@@ -298,13 +297,12 @@ export class UsersService {
         throw new UnauthorizedException('Credenciais inválidas');
       }
 
-      // Licença inválida já é logada dentro de validate() depois descomentar
-      // const license = await this.licenseService.validate(username);
-      // if (!license.isValid) {
-      //   throw new UnauthorizedException(
-      //     'Licença inválida ou expirada. Entre em contato com o suporte.',
-      //   );
-      // }
+      const license = await this.licenseService.validate(username);
+      if (!license.isValid) {
+        throw new UnauthorizedException(
+          'Licença inválida ou expirada. Entre em contato com o suporte.',
+        );
+      }
 
       const payload = {
         userId: user.id,
@@ -315,10 +313,9 @@ export class UsersService {
 
       this.logger.log(`Login realizado (user=${username}, role=${user.role})`);
 
-      // return license.message
-      //   ? { token, licenseWarning: license.message }
-      //   : { token };
-      return { token };
+      return license.message
+        ? { token, licenseWarning: license.message }
+        : { token };
     } catch (error) {
       this.rethrow(error, `Falha inesperada no login (user=${username})`);
     }

@@ -51,6 +51,7 @@ lerna-debug.log*
 /nsis-installer-windows/public
 /nsis-installer-windows/server.js
 /release
+/backups
 
 # Runtime data
 pids

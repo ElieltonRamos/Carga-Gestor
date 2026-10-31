@@ -13,9 +13,11 @@ import { ClientsModule } from './features/clients/clients.module';
 import { CargosModule } from './features/cargos/cargos.module';
 import { ScanModule } from './features/scan/scan.module';
 import { SummaryModule } from './features/summary/summary.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public', 'dist', 'wms-app', 'browser'),
       exclude: ['/api/{*splat}', '/swagger/{*splat}'],

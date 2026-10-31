@@ -1,9 +1,21 @@
 -- CreateTable
 CREATE TABLE `companies` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `cnpj` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
-    `document` VARCHAR(191) NULL,
+    `trade_name` VARCHAR(191) NULL,
+    `state_registration` VARCHAR(191) NULL,
+    `phone` VARCHAR(191) NULL,
+    `street` VARCHAR(191) NULL,
+    `street_number` VARCHAR(191) NULL,
+    `neighborhood` VARCHAR(191) NULL,
+    `city` VARCHAR(191) NULL,
+    `state` CHAR(2) NULL,
+    `zip_code` VARCHAR(191) NULL,
+    `license_key` VARCHAR(191) NULL,
+    `license_token` TEXT NULL,
     `settings` JSON NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
     PRIMARY KEY (`id`)
@@ -62,8 +74,12 @@ CREATE TABLE `cargos` (
     `departed_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
+    `departed_by_id` INTEGER NULL,
+    `pending_at_departure` INTEGER NULL,
 
     UNIQUE INDEX `cargos_load_order_key`(`load_order`),
+    INDEX `cargos_created_at_idx`(`created_at`),
+    INDEX `cargos_status_created_at_idx`(`status`, `created_at`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -71,13 +87,21 @@ CREATE TABLE `cargos` (
 CREATE TABLE `deliveries` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `cargo_id` INTEGER NOT NULL,
-    `client_id` INTEGER NOT NULL,
     `sequence` INTEGER NOT NULL,
     `romaneio_number` VARCHAR(191) NOT NULL,
     `bidding_number` VARCHAR(191) NULL,
     `modality` VARCHAR(191) NULL,
     `has_installation` BOOLEAN NOT NULL DEFAULT false,
     `status` ENUM('GENERATED') NOT NULL DEFAULT 'GENERATED',
+    `client_id` INTEGER NULL,
+    `client_name` VARCHAR(191) NOT NULL,
+    `client_document` VARCHAR(191) NULL,
+    `client_address` VARCHAR(191) NULL,
+    `client_neighborhood` VARCHAR(191) NULL,
+    `client_city` VARCHAR(191) NOT NULL,
+    `client_state` CHAR(2) NULL,
+    `client_zip_code` VARCHAR(191) NULL,
+    `client_phone` VARCHAR(191) NULL,
 
     UNIQUE INDEX `deliveries_romaneio_number_key`(`romaneio_number`),
     INDEX `deliveries_client_id_idx`(`client_id`),
@@ -120,22 +144,30 @@ CREATE TABLE `volumes` (
 CREATE TABLE `scan_logs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `code` VARCHAR(191) NOT NULL,
-    `result` ENUM('OK', 'ERROR', 'WARNING') NOT NULL,
+    `result` ENUM('OK', 'ERROR', 'WARNING', 'UNDO') NOT NULL,
     `volume_id` INTEGER NULL,
     `user_id` INTEGER NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `reason` ENUM('NOT_FOUND', 'ALREADY_LOADED', 'WRONG_CARGO', 'CARGO_DEPARTED') NULL,
+    `cargo_id` INTEGER NULL,
+    `device` VARCHAR(191) NULL,
 
+    INDEX `scan_logs_cargo_id_idx`(`cargo_id`),
     INDEX `scan_logs_volume_id_idx`(`volume_id`),
     INDEX `scan_logs_user_id_idx`(`user_id`),
     INDEX `scan_logs_code_idx`(`code`),
+    INDEX `scan_logs_created_at_idx`(`created_at`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `cargos` ADD CONSTRAINT `cargos_departed_by_id_fkey` FOREIGN KEY (`departed_by_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `deliveries` ADD CONSTRAINT `deliveries_cargo_id_fkey` FOREIGN KEY (`cargo_id`) REFERENCES `cargos`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `deliveries` ADD CONSTRAINT `deliveries_client_id_fkey` FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `deliveries` ADD CONSTRAINT `deliveries_client_id_fkey` FOREIGN KEY (`client_id`) REFERENCES `clients`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `delivery_items` ADD CONSTRAINT `delivery_items_delivery_id_fkey` FOREIGN KEY (`delivery_id`) REFERENCES `deliveries`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -151,3 +183,6 @@ ALTER TABLE `scan_logs` ADD CONSTRAINT `scan_logs_volume_id_fkey` FOREIGN KEY (`
 
 -- AddForeignKey
 ALTER TABLE `scan_logs` ADD CONSTRAINT `scan_logs_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `scan_logs` ADD CONSTRAINT `scan_logs_cargo_id_fkey` FOREIGN KEY (`cargo_id`) REFERENCES `cargos`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

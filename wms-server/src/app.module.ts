@@ -17,7 +17,7 @@ import { SummaryModule } from './features/summary/summary.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'public', 'dist', 'frontend', 'browser'),
+      rootPath: join(process.cwd(), 'public', 'dist', 'wms-app', 'browser'),
       exclude: ['/api/{*splat}', '/swagger/{*splat}'],
     }),
     JwtModule.register({

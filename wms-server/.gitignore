@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+**.exe
 
 # Logs
 logs
@@ -47,6 +48,9 @@ lerna-debug.log*
 .tmp
 /data
 /public
+/nsis-installer-windows/public
+/nsis-installer-windows/server.js
+/release
 
 # Runtime data
 pids

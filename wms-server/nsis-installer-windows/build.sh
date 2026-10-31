@@ -24,7 +24,7 @@ REQUIRED_FILES=(
     "wms-server.nsi"
     ".env"
     "node-v24-x64.msi"
-    "public/dist/frontend/browser/index.html"
+    "public/dist/wms-app/browser/index.html"
 )
 
 echo "Verificando arquivos necessários..."
@@ -35,7 +35,7 @@ for file in "${REQUIRED_FILES[@]}"; do
             echo "  Baixe em: https://nodejs.org/dist/latest-v24.x/ (arquivo node-v24.x.x-x64.msi)"
             echo "  Renomeie para node-v24-x64.msi nesta pasta."
         fi
-        if [ "$file" == "public/dist/frontend/browser/index.html" ]; then
+        if [ "$file" == "public/dist/wms-app/browser/index.html" ]; then
             echo "  Build do front ausente. Rode 'npm run installer:win' na raiz do backend."
         fi
         exit 1

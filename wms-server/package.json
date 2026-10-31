@@ -21,7 +21,7 @@
     "prisma:reset": "npx prisma migrate reset --force",
     "prisma:studio": "npx prisma studio",
     "prisma:seed": "npx tsx prisma/seeds/seed.ts",
-    "build:bundle": "npx esbuild dist/src/main.js --bundle --platform=node --target=node18 --outfile=release/server.js --minify --external:@nestjs/microservices --external:class-transformer/storage --external:@fastify/static",
+    "build:bundle": "npx esbuild dist/src/main.js --bundle --platform=node --target=node18 --outfile=release/server.js --minify --external:@nestjs/microservices --external:@nestjs/websockets --external:class-transformer/storage --external:@fastify/static",
     "release": "npm run build && npm run build:bundle",
     "manager-db:win": "npm run build && npx esbuild dist/src/core/scripts/manager-database.js --bundle --platform=node --target=node18 --outfile=release/manager-database.js --minify --packages=external && npx pkg release/manager-database.js --targets node18-win-x64 --output release/manager-database.exe",
     "manager-db:linux": "npm run build && npx esbuild dist/src/core/scripts/manager-database.js --bundle --platform=node --target=node18 --outfile=release/manager-database.js --minify --packages=external && npx pkg release/manager-database.js --targets node18-linux-x64 --output release/manager-database-linux",

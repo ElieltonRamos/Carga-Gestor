@@ -1,22 +1,24 @@
-<div class="flex flex-col h-screen overflow-hidden bg-bg-base">
+<div class="flex flex-col h-dvh md:h-screen overflow-hidden bg-bg-base">
   <!-- TOP NAV -->
   <header
-    class="h-16 shrink-0 flex items-center gap-6 px-6 bg-bg-sidebar border-b border-(--color-border)"
+    class="h-16 shrink-0 flex items-center gap-2 md:gap-6 px-3 md:px-6 bg-bg-sidebar border-b border-(--color-border)"
   >
     <!-- Logo -->
     <div class="flex items-center gap-2.5 shrink-0">
       <div
-        class="w-8 h-8 rounded-lg avatar-gradient flex items-center justify-center text-(--color-text-inverse)"
+        class="hidden md:flex w-8 h-8 rounded-lg avatar-gradient items-center justify-center text-(--color-text-inverse)"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M12 2 2 7v10l10 5 10-5V7z" />
         </svg>
       </div>
       <img src="icone-carga-gestor.png" alt="" class="h-10 w-auto shrink-0" />
-      <span class="text-[15px] font-semibold text-(--color-text-primary)">Gestor de Carga</span>
+      <span class="hidden md:inline text-[15px] font-semibold text-(--color-text-primary)">
+        Gestor de Carga
+      </span>
     </div>
-    <!-- Histórico -->
-    <div class="flex items-center gap-1 shrink-0">
+    <!-- Histórico (oculto no mobile) -->
+    <div class="hidden md:flex items-center gap-1 shrink-0">
       <button
         type="button"
         (click)="goBack()"
@@ -54,13 +56,17 @@
         </svg>
       </button>
     </div>
-    <!-- Nav -->
-    <nav class="flex-1 flex items-center gap-1 h-full">
+    <!-- Nav (rolável na horizontal no mobile, só ícones) -->
+    <nav
+      class="flex-1 min-w-0 flex items-center gap-1 h-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       @for (item of nav; track item.route) {
         <a
           [routerLink]="item.route"
           routerLinkActive="nav-active"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-(--color-text-muted) hover:bg-bg-hover hover:text-(--color-text-primary) transition-all duration-150"
+          [attr.aria-label]="item.label"
+          [attr.title]="item.label"
+          class="shrink-0 whitespace-nowrap flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-(--color-text-muted) hover:bg-bg-hover hover:text-(--color-text-primary) transition-all duration-150"
         >
           @switch (item.icon) {
             @case ('grid') {
@@ -125,13 +131,13 @@
               </svg>
             }
           }
-          {{ item.label }}
+          <span class="hidden md:inline">{{ item.label }}</span>
         </a>
       }
     </nav>
 
     <!-- Right side -->
-    <div class="flex items-center gap-2 shrink-0">
+    <div class="flex items-center gap-1 md:gap-2 shrink-0">
       <!-- Theme toggle -->
       <button
         (click)="toggleTheme()"
@@ -184,14 +190,14 @@
 
       <!-- User -->
       <div
-        class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-lg bg-bg-hover border border-(--color-border) cursor-pointer hover:bg-bg-hover-md transition-all"
+        class="flex items-center gap-2 pl-1 pr-1 md:pr-3 py-1 rounded-lg bg-bg-hover border border-(--color-border) cursor-pointer hover:bg-bg-hover-md transition-all"
       >
         <div
           class="w-7 h-7 rounded-md avatar-gradient flex items-center justify-center text-[11px] font-semibold text-(--color-text-inverse)"
         >
           {{ currentUser.initials }}
         </div>
-        <div class="leading-tight">
+        <div class="hidden md:block leading-tight">
           <p class="text-[11px] font-medium text-(--color-text-primary)">
             {{ currentUser.name }}
           </p>
@@ -206,7 +212,7 @@
   <!-- MAIN -->
   <main class="flex-1 overflow-y-auto bg-bg-base relative">
     <div class="bg-grid absolute inset-0 pointer-events-none"></div>
-    <div class="relative z-10 p-6">
+    <div class="relative z-10 p-3 md:p-6">
       <router-outlet />
     </div>
   </main>

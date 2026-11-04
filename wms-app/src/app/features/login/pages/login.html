@@ -1,5 +1,5 @@
 <main
-  class="min-h-screen w-screen flex items-center justify-center p-4 bg-login-page-bg-to bg-[radial-gradient(ellipse_at_60%_40%,var(--color-login-page-bg-from)_0%,var(--color-login-page-bg-to)_100%)]"
+  class="min-h-screen w-full md:w-screen flex flex-col items-center justify-center p-4 pt-16 pb-14 md:py-4 bg-login-page-bg-to bg-[radial-gradient(ellipse_at_60%_40%,var(--color-login-page-bg-from)_0%,var(--color-login-page-bg-to)_100%)]"
 >
   <button
     (click)="themeService.toggle()"
@@ -9,16 +9,16 @@
   </button>
 
   <div class="flex w-full max-w-3xl">
-    <!-- Logo Panel 1-->
+    <!-- Logo Panel (oculto no mobile) -->
     <div
-      class="w-1/2 rounded-l-xl p-8 bg-login-panel-bg border border-login-panel-border border-r-0 backdrop-blur-xl flex items-center justify-center overflow-hidden"
+      class="hidden md:flex w-1/2 rounded-l-xl p-8 bg-login-panel-bg border border-login-panel-border border-r-0 backdrop-blur-xl items-center justify-center overflow-hidden"
     >
       <img src="logo-carga-gestor.png" alt="Gestor de Carga" class="w-full h-auto object-contain" />
     </div>
 
     <!-- Form Panel -->
     <div
-      class="w-1/2 rounded-r-xl p-8 bg-login-panel-bg border border-login-panel-border backdrop-blur-xl"
+      class="w-full md:w-1/2 rounded-xl md:rounded-l-none md:rounded-r-xl p-6 md:p-8 bg-login-panel-bg border border-login-panel-border backdrop-blur-xl"
     >
       <!-- Header -->
       <div class="flex items-center gap-3 mb-8">
@@ -62,7 +62,7 @@
               formControlName="username"
               placeholder="admin"
               (keydown.enter)="$event.preventDefault(); passwordInput.focus()"
-              class="w-full h-11 pl-10 pr-4 rounded-lg text-sm text-(--color-input-text) placeholder:text-(--color-input-placeholder) outline-none transition-all bg-(--color-input-bg) border border-(--color-input-border) focus:border-(--color-input-border-focus)"
+              class="w-full h-11 pl-10 pr-4 rounded-lg text-base md:text-sm text-(--color-input-text) placeholder:text-(--color-input-placeholder) outline-none transition-all bg-(--color-input-bg) border border-(--color-input-border) focus:border-(--color-input-border-focus)"
               [class.border-danger!]="
                 form.get('username')?.touched && form.get('username')?.invalid
               "
@@ -102,7 +102,7 @@
               [type]="showPassword() ? 'text' : 'password'"
               formControlName="password"
               placeholder="••••••••"
-              class="w-full h-11 pl-10 pr-10 rounded-lg text-sm text-(--color-input-text) placeholder:text-(--color-input-placeholder) outline-none transition-all bg-(--color-input-bg) border border-(--color-input-border) focus:border-(--color-input-border-focus)"
+              class="w-full h-11 pl-10 pr-10 rounded-lg text-base md:text-sm text-(--color-input-text) placeholder:text-(--color-input-placeholder) outline-none transition-all bg-(--color-input-bg) border border-(--color-input-border) focus:border-(--color-input-border-focus)"
               [class.border-danger!]="
                 form.get('password')?.touched && form.get('password')?.invalid
               "
@@ -182,7 +182,7 @@
   </div>
 
   <!-- Footer -->
-  <p class="absolute bottom-4 text-center text-xs text-text-disabled">
+  <p class="mt-6 md:mt-0 md:absolute md:bottom-4 text-center text-xs text-text-disabled">
     © 2026 Gestor de Carga. Versão: {{ version }}
   </p>
 </main>

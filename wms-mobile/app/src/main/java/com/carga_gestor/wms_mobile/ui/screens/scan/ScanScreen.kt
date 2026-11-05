@@ -64,6 +64,7 @@ import com.carga_gestor.wms_mobile.data.model.DeliveryDetail
 import com.carga_gestor.wms_mobile.data.model.ScanReason
 import com.carga_gestor.wms_mobile.data.model.ScanResult
 import com.carga_gestor.wms_mobile.ui.theme.extraColors
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +110,7 @@ fun ScanScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
                         .padding(16.dp)
                         .height(56.dp)
                 ) {

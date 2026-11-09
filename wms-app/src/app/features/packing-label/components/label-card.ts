@@ -108,7 +108,7 @@ export interface ProductLabel {
         class="shrink-0 border-t border-print-ink pt-[0.8mm] mt-[0.8mm] flex flex-col items-center"
       >
         <app-barcode class="w-full h-[7mm]" [value]="l.code || 'SEM-CODIGO'" />
-        <div class="tracking-widest text-[8px] font-bold leading-none mt-[0.5mm]">
+        <div class="tracking-widest text-[12px] font-bold leading-none mt-[0.5mm]">
           {{ l.code || 'SEM-CODIGO' }}
         </div>
       </div>

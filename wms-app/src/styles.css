@@ -180,6 +180,7 @@ button:disabled {
 }
 
 @page etiqueta {
+  size: 100mm 50mm;
   margin: 0;
 }
 

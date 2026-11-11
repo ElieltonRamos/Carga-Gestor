@@ -1,7 +1,7 @@
 <div class="hidden print:block [page:etiqueta]">
   @for (label of labels(); track label.code + '-' + label.volumeIndex) {
     <app-label-card
-      class="print:break-inside-avoid"
+      class="print:break-inside-avoid print:break-after-page print:last:break-after-auto"
       [label]="label"
       [companyName]="companyName()"
       [logo]="logo()"

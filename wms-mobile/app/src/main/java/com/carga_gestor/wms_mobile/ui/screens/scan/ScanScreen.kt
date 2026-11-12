@@ -79,7 +79,7 @@ fun ScanScreen(
     val loaded = state.cargo != null
 
     fun submit() {
-        val value = code.trim()
+        val value = code.trim().replace('.', '-')
         code = ""
         clearTick++
         if (value.isNotEmpty()) viewModel.onCodeScanned(value)
@@ -150,8 +150,17 @@ fun ScanScreen(
                             )
                         }
                     }
-                    TextButton(onClick = { keyboardEnabled = !keyboardEnabled }) {
-                        Text(if (keyboardEnabled) "Ocultar teclado" else "Usar teclado")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { keyboardEnabled = !keyboardEnabled }) {
+                            Text(if (keyboardEnabled) "Ocultar teclado" else "Usar teclado")
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Digite . no lugar do -",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                     if (state.removeMode) RemoveModeBanner()
                     state.error?.let { ErrorBanner(it) }

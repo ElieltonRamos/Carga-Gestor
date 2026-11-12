@@ -186,9 +186,28 @@ private fun LoginContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Toggle de tema: dentro do scroll, acima do card
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.extraColors.bgCard)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+                            .clickable { ThemeManager.set(!isDark) }
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (isDark) "☀️ Claro" else "🌙 Escuro",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -197,7 +216,7 @@ private fun LoginContent(
                         color = MaterialTheme.extraColors.bgCard.copy(alpha = 0.7f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
-                        Column(modifier = Modifier.padding(24.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             // Header
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Image(
@@ -205,27 +224,28 @@ private fun LoginContent(
                                     contentDescription = null,
                                     contentScale = ContentScale.Fit,
                                     modifier = Modifier
-                                        .size(40.dp)
+                                        .size(32.dp)
                                         .clip(RoundedCornerShape(6.dp))
                                 )
-                                Spacer(Modifier.size(12.dp))
+                                Spacer(Modifier.size(10.dp))
                                 Column {
                                     Text(
                                         text = "Bem-vindo de volta",
-                                        fontSize = 22.sp,
-                                        lineHeight = 26.sp,
+                                        fontSize = 18.sp,
+                                        lineHeight = 22.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "Acesse sua estação de trabalho",
-                                        fontSize = 14.sp,
+                                        fontSize = 12.sp,
+                                        lineHeight = 14.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
 
-                            Spacer(Modifier.height(28.dp))
+                            Spacer(Modifier.height(16.dp))
 
                             LoginField(
                                 label = "Usuário",
@@ -244,7 +264,7 @@ private fun LoginContent(
                                 onTouched = { usernameTouched = true }
                             )
 
-                            Spacer(Modifier.height(20.dp))
+                            Spacer(Modifier.height(12.dp))
 
                             LoginField(
                                 label = "Senha",
@@ -278,7 +298,7 @@ private fun LoginContent(
                                 }
                             )
 
-                            Spacer(Modifier.height(24.dp))
+                            Spacer(Modifier.height(16.dp))
 
                             Button(
                                 onClick = { submit() },
@@ -286,7 +306,7 @@ private fun LoginContent(
                                 shape = inputShape,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(44.dp),
+                                    .height(40.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -296,7 +316,7 @@ private fun LoginContent(
                             ) {
                                 if (isLoading) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(18.dp),
                                         color = MaterialTheme.colorScheme.onPrimary,
                                         strokeWidth = 3.dp
                                     )
@@ -317,35 +337,16 @@ private fun LoginContent(
                         }
                     }
 
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(12.dp))
 
                     Text(
                         text = "© 2026 Gestor de Carga. Versão: $APP_VERSION",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.extraColors.textDisabled
                     )
                 }
             }
-        }
-
-        // Toggle de tema: filho direto do Box raiz
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(16.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.extraColors.bgCard)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
-                .clickable { ThemeManager.set(!isDark) }
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = if (isDark) "☀️ Claro" else "🌙 Escuro",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }

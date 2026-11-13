@@ -9,10 +9,18 @@ import { Driver, Prisma } from '../../../generated/prisma/client.js';
 import { CreateDriverDto } from './dto/create-driver.dto.js';
 import { UpdateDriverDto } from './dto/update-driver.dto.js';
 import { ListDriversQueryDto } from './dto/list-drivers-query.dto.js';
+import { CreateDriverReviewDto } from './dto/create-driver-review.dto.js';
+import { DriverReviewResponseDto } from './dto/driver-review-response.dto.js';
 import { DriverResponseDto, RatingStats } from './dto/driver-response.dto.js';
+import { PaginationQueryDto } from '../../core/utils/pagination-query.dto.js';
 import { PaginatedResponseDto } from '../../core/utils/paginated-response.js';
 
 const EDITABLE_FIELDS = ['name', 'phone'] as const;
+
+const reviewInclude = {
+  user: { select: { name: true } },
+  cargo: { select: { loadOrder: true } },
+} satisfies Prisma.DriverReviewInclude;
 
 @Injectable()
 export class DriversService {
@@ -198,6 +206,89 @@ export class DriversService {
       this.rethrow(
         error,
         `Falha ao desativar motorista (actor=${actor}, id=${id})`,
+      );
+    }
+  }
+
+  async createReview(
+    driverId: number,
+    dto: CreateDriverReviewDto,
+    userId: number,
+    actor: string,
+  ): Promise<DriverReviewResponseDto> {
+    try {
+      await this.findDriver(driverId, actor);
+
+      if (dto.cargoId) {
+        const cargo = await this.prisma.client.cargo.findUnique({
+          where: { id: dto.cargoId },
+          select: { id: true },
+        });
+        if (!cargo) {
+          this.logger.warn(
+            `Carga da avaliação não encontrada (actor=${actor}, cargoId=${dto.cargoId})`,
+          );
+          throw new NotFoundException('Carga não encontrada');
+        }
+      }
+
+      const created = await this.prisma.client.driverReview.create({
+        data: {
+          driverId,
+          cargoId: dto.cargoId ?? null,
+          userId,
+          rating: dto.rating,
+          comment: dto.comment ?? null,
+        },
+        include: reviewInclude,
+      });
+
+      this.logger.log(
+        `Avaliação criada (actor=${actor}, id=${created.id}, driverId=${driverId})`,
+      );
+
+      return new DriverReviewResponseDto(created);
+    } catch (error) {
+      this.rethrow(
+        error,
+        `Falha ao avaliar motorista (actor=${actor}, driverId=${driverId})`,
+      );
+    }
+  }
+
+  async findReviews(
+    driverId: number,
+    query: PaginationQueryDto,
+    actor: string,
+  ): Promise<PaginatedResponseDto<DriverReviewResponseDto>> {
+    try {
+      await this.findDriver(driverId, actor);
+
+      const { page, limit } = query;
+      const where: Prisma.DriverReviewWhereInput = { driverId };
+
+      const [items, total] = await this.prisma.client.$transaction([
+        this.prisma.client.driverReview.findMany({
+          where,
+          include: reviewInclude,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.client.driverReview.count({ where }),
+      ]);
+
+      return {
+        data: items.map((review) => new DriverReviewResponseDto(review)),
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      this.rethrow(
+        error,
+        `Falha ao listar avaliações (actor=${actor}, driverId=${driverId})`,
       );
     }
   }

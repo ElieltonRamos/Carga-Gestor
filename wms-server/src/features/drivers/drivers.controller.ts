@@ -26,9 +26,12 @@ import { DriversService } from './drivers.service.js';
 import { CreateDriverDto } from './dto/create-driver.dto.js';
 import { UpdateDriverDto } from './dto/update-driver.dto.js';
 import { ListDriversQueryDto } from './dto/list-drivers-query.dto.js';
+import { CreateDriverReviewDto } from './dto/create-driver-review.dto.js';
+import { DriverReviewResponseDto } from './dto/driver-review-response.dto.js';
 import { DriverResponseDto } from './dto/driver-response.dto.js';
 import { CurrentUser } from '../../core/decorators/current-user.decorator.js';
 import { ApiPaginatedResponse } from '../../core/utils/paginated-response.js';
+import { PaginationQueryDto } from '../../core/utils/pagination-query.dto.js';
 
 @ApiTags('Motoristas')
 @ApiBearerAuth()
@@ -127,5 +130,48 @@ export class DriversController {
     @CurrentUser('username') actor: string,
   ) {
     return this.driversService.remove(id, actor);
+  }
+
+  @Get(':id/reviews')
+  @ApiOperation({
+    summary: 'Lista as avaliações de um motorista',
+    description: 'Mais recentes primeiro.',
+  })
+  @ApiPaginatedResponse(DriverReviewResponseDto, 'Lista paginada de avaliações')
+  @ApiBadRequestResponse({ description: 'Parâmetros inválidos' })
+  @ApiUnauthorizedResponse({
+    description: 'Token ausente, inválido ou expirado',
+  })
+  @ApiNotFoundResponse({ description: 'Motorista não encontrado' })
+  findReviews(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: PaginationQueryDto,
+    @CurrentUser('username') actor: string,
+  ) {
+    return this.driversService.findReviews(id, query, actor);
+  }
+
+  @Post(':id/reviews')
+  @ApiOperation({
+    summary: 'Avalia um motorista',
+    description:
+      'Nota de 1 a 5, com comentário e carga opcionais. O avaliador é o usuário logado.',
+  })
+  @ApiCreatedResponse({
+    description: 'Avaliação criada',
+    type: DriverReviewResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Dados inválidos' })
+  @ApiUnauthorizedResponse({
+    description: 'Token ausente, inválido ou expirado',
+  })
+  @ApiNotFoundResponse({ description: 'Motorista ou carga não encontrados' })
+  createReview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateDriverReviewDto,
+    @CurrentUser('userId') userId: number,
+    @CurrentUser('username') actor: string,
+  ) {
+    return this.driversService.createReview(id, dto, userId, actor);
   }
 }

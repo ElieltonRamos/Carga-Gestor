@@ -5,6 +5,8 @@ export interface Driver {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 export interface DriverPayload {

@@ -5,6 +5,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { Cargo, CargoDelivery, CargoDeliveryDto, CreateCargoDto } from '../../cargo-overview/types/cargo';
 import { CargosService } from '../../cargo-overview/services/cargos.service';
+import { DriverSelect } from '../../../shared/components/driver-select/driver-select';
+import { Driver } from '../../../features/drivers/types/driver';
 
 type Phase = 'config' | 'wizard' | 'done';
 type CargoConfig = Omit<CreateCargoDto, 'deliveries'> & { totalDestinations: number };
@@ -23,7 +25,7 @@ const todayInSaoPaulo = () =>
 
 @Component({
   selector: 'app-cargo-registration',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, DriverSelect],
   templateUrl: './cargo-registration.html',
 })
 export class CargoRegistration {
@@ -51,6 +53,7 @@ export class CargoRegistration {
     loadOrder: ['', Validators.required],
     loadDate: ['', Validators.required],
     issueDate: [todayInSaoPaulo(), Validators.required],
+    driverId: [null as number | null],
     driverName: [''],
     driverPhone: [''],
     truck: [''],
@@ -138,6 +141,7 @@ export class CargoRegistration {
       loadOrder: value.loadOrder!,
       loadDate: value.loadDate!,
       issueDate: value.issueDate!,
+      driverId: value.driverId ?? null,
       driverName: value.driverName || undefined,
       driverPhone: value.driverPhone || undefined,
       truck: value.truck || undefined,
@@ -153,6 +157,22 @@ export class CargoRegistration {
     this.cargo.set(null);
     this.currentIndex.set(0);
     this.resetDeliveryForm();
+  }
+
+  onDriverSelected(driver: Driver | null): void {
+    this.cargoConfigForm.patchValue({
+      driverId: driver?.id ?? null,
+      driverName: driver?.name ?? '',
+      driverPhone: driver?.phone ?? '',
+    });
+  }
+
+  onDriverNameChanged(name: string): void {
+    this.cargoConfigForm.controls.driverName.setValue(name);
+  }
+
+  onDriverPhoneChanged(phone: string | null): void {
+    this.cargoConfigForm.controls.driverPhone.setValue(phone ?? '');
   }
 
   backToConfig(): void {
@@ -235,6 +255,7 @@ export class CargoRegistration {
       loadOrder: '',
       loadDate: '',
       issueDate: todayInSaoPaulo(),
+      driverId: null,
       driverName: '',
       driverPhone: '',
       truck: '',

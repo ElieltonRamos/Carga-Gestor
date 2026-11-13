@@ -16,12 +16,12 @@ import {
 import { CargosService } from '../cargo-overview/services/cargos.service';
 import { toDeliveryDto } from '../../shared/utils/delivery-payload';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DriverSelect } from '../../shared/components/driver-select/driver-select';
+import { Driver } from '../../features/drivers/types/driver';
 
 type CargoAction = 'depart' | 'reopen' | 'remove';
 
 type OptionalHeaderField =
-  | 'driverName'
-  | 'driverPhone'
   | 'truck'
   | 'inspectionResponsible'
   | 'organizationResponsible'
@@ -40,7 +40,7 @@ type PollResult = { version: number; cargo: Cargo } | 'missing' | null;
 
 @Component({
   selector: 'app-cargo-detail',
-  imports: [DatePipe, ReactiveFormsModule],
+  imports: [DatePipe, ReactiveFormsModule, DriverSelect],
   templateUrl: './cargo-detail.html',
 })
 export class CargoDetail {
@@ -55,8 +55,6 @@ export class CargoDetail {
   private readonly cargoId = Number(this.route.snapshot.paramMap.get('cargoId'));
 
   readonly optionalFields: { control: OptionalHeaderField; label: string; maxlength: number }[] = [
-    { control: 'driverName', label: 'Motorista', maxlength: 191 },
-    { control: 'driverPhone', label: 'Telefone motorista', maxlength: 20 },
     { control: 'truck', label: 'Caminhão', maxlength: 191 },
     { control: 'inspectionResponsible', label: 'Responsável pela conferência', maxlength: 191 },
     { control: 'organizationResponsible', label: 'Responsável pela organização', maxlength: 191 },
@@ -80,6 +78,7 @@ export class CargoDetail {
     loadOrder: ['', Validators.required],
     loadDate: ['', Validators.required],
     issueDate: ['', Validators.required],
+    driverId: [null as number | null],
     driverName: [''],
     driverPhone: [''],
     truck: [''],
@@ -382,6 +381,7 @@ export class CargoDetail {
       loadOrder: cargo.loadOrder,
       loadDate: cargo.loadDate.slice(0, 10),
       issueDate: cargo.issueDate.slice(0, 10),
+      driverId: cargo.driverId ?? null,
       driverName: cargo.driverName ?? '',
       driverPhone: cargo.driverPhone ?? '',
       truck: cargo.truck ?? '',
@@ -393,6 +393,22 @@ export class CargoDetail {
       romaneioResponsible: cargo.romaneioResponsible ?? '',
     });
     this.editing.set(true);
+  }
+
+  onDriverSelected(driver: Driver | null): void {
+    this.editForm.patchValue({
+      driverId: driver?.id ?? null,
+      driverName: driver?.name ?? '',
+      driverPhone: driver?.phone ?? '',
+    });
+  }
+
+  onDriverNameChanged(name: string): void {
+    this.editForm.controls.driverName.setValue(name);
+  }
+
+  onDriverPhoneChanged(phone: string | null): void {
+    this.editForm.controls.driverPhone.setValue(phone ?? '');
   }
 
   cancelEdit(): void {
@@ -513,6 +529,18 @@ export class CargoDetail {
 
     const issueDate = value.issueDate ?? '';
     if (issueDate !== cargo.issueDate.slice(0, 10)) changes.issueDate = issueDate;
+
+    // driverId - only send if changed (normalize undefined to null)
+    if ((value.driverId ?? null) !== (cargo.driverId ?? null)) {
+      changes.driverId = value.driverId ?? null;
+    }
+
+    // driverName and driverPhone - send if changed (not in optionalFields anymore)
+    const nextDriverName = (value.driverName ?? '').trim() || null;
+    if (nextDriverName !== (cargo.driverName ?? null)) changes.driverName = nextDriverName;
+
+    const nextDriverPhone = (value.driverPhone ?? '').trim() || null;
+    if (nextDriverPhone !== (cargo.driverPhone ?? null)) changes.driverPhone = nextDriverPhone;
 
     for (const { control } of this.optionalFields) {
       const next = (value[control] ?? '').trim() || null;

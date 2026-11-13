@@ -440,6 +440,61 @@ export class CargosService {
     };
   }
 
+  // Reaproveita o motorista ativo pelo nome (sem diferenciar maiúsculas/minúsculas)
+  // ou cria um novo. Nunca atualiza um Driver existente.
+  private async findOrCreateDriver(
+    tx: Prisma.TransactionClient,
+    name: string,
+    phone: string | null,
+    actor: string,
+  ): Promise<number> {
+    const rows = await tx.$queryRaw<{ id: number }[]>`
+      SELECT id FROM drivers
+      WHERE active = 1 AND LOWER(name) = LOWER(${name})
+      ORDER BY id ASC
+      LIMIT 1
+    `;
+    if (rows.length > 0) return Number(rows[0].id);
+
+    const created = await tx.driver.create({ data: { name, phone } });
+    this.logger.log(
+      `Motorista criado a partir da carga (actor=${actor}, id=${created.id})`,
+    );
+    return created.id;
+  }
+
+  // Criação: com driverId valida e copia o cadastro; só com nome, reaproveita ou cria
+  private async resolveCargoDriver(
+    tx: Prisma.TransactionClient,
+    dto: {
+      driverId?: number | null;
+      driverName?: string | null;
+      driverPhone?: string | null;
+    },
+    actor: string,
+  ) {
+    if (dto.driverId) return this.resolveDriver(tx, dto.driverId, dto, actor);
+
+    if (dto.driverName) {
+      return {
+        driverId: await this.findOrCreateDriver(
+          tx,
+          dto.driverName,
+          dto.driverPhone ?? null,
+          actor,
+        ),
+        driverName: dto.driverName,
+        driverPhone: dto.driverPhone ?? null,
+      };
+    }
+
+    return {
+      driverId: null,
+      driverName: null,
+      driverPhone: dto.driverPhone ?? null,
+    };
+  }
+
   private async resolveClient(
     tx: Prisma.TransactionClient,
     dto: CargoDeliveryDto,
@@ -871,13 +926,7 @@ export class CargosService {
 
       const { cargoId, volumes } = await this.prisma.client.$transaction(
         async (tx) => {
-          const driver = dto.driverId
-            ? await this.resolveDriver(tx, dto.driverId, dto, actor)
-            : {
-                driverId: null,
-                driverName: dto.driverName ?? null,
-                driverPhone: dto.driverPhone ?? null,
-              };
+          const driver = await this.resolveCargoDriver(tx, dto, actor);
 
           const cargo = await tx.cargo.create({
             data: {
@@ -962,6 +1011,12 @@ export class CargosService {
       const driverChanged =
         dto.driverId !== undefined && dto.driverId !== cargo.driverId;
 
+      // Sem driverId numérico, um nome novo vincula (ou cria) o motorista pelo nome
+      const linkByName =
+        typeof dto.driverId !== 'number' &&
+        !!dto.driverName &&
+        dto.driverName !== cargo.driverName;
+
       if (
         dto.deliveries === undefined &&
         !driverChanged &&
@@ -997,6 +1052,16 @@ export class CargosService {
               ? { driverId: null }
               : await this.resolveDriver(tx, dto.driverId!, dto, actor);
           Object.assign(changes, changedFields(driver, cargo));
+          touched.add('motorista');
+        }
+
+        if (linkByName) {
+          changes.driverId = await this.findOrCreateDriver(
+            tx,
+            dto.driverName!,
+            dto.driverPhone ?? null,
+            actor,
+          );
           touched.add('motorista');
         }
 

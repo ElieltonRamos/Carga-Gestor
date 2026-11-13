@@ -8,6 +8,7 @@ export interface CargoListItem {
   status: CargoStatus;
   loadDate: string;
   issueDate: string;
+  driverId: number | null;
   driverName: string | null;
   driverPhone: string | null;
   truck: string | null;
@@ -127,6 +128,7 @@ export interface CargoDeliveryDto {
 }
 
 export interface CargoHeaderDto {
+  driverId?: number | null;
   driverName?: string | null;
   driverPhone?: string | null;
   truck?: string | null;

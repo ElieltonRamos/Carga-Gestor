@@ -136,6 +136,23 @@
           </div>
         </div>
 
+        <!-- Driver Select -->
+        <div class="pt-4 border-t border-border">
+          <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+            Motorista
+          </label>
+          <app-driver-select
+            [driverId]="editForm.controls.driverId.value ?? null"
+            [driverName]="editForm.controls.driverName.value ?? ''"
+            [driverPhone]="editForm.controls.driverPhone.value ?? null"
+            [disabled]="isActing()"
+            placeholder="Buscar motorista cadastrado ou digitar nome novo..."
+            (driverSelected)="onDriverSelected($event)"
+            (nameChanged)="onDriverNameChanged($event)"
+            (phoneChanged)="onDriverPhoneChanged($event)"
+          />
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border">
           @for (field of optionalFields; track field.control) {
             <div class="flex flex-col gap-2">

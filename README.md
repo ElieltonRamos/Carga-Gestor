@@ -1,258 +1,268 @@
-# CargaGestor
+# WMS – Gestão de Carregamento (CargaGestor)
 
-Sistema WMS para expedição e conferência de carregamentos em depósito.
+Sistema de expedição e conferência de carregamentos em depósito. Uma **carga** agrupa **romaneios** (entregas por cliente); cada romaneio tem **itens**, e cada item gera **volumes** com código único. O operador bipa cada volume antes da expedição.
 
-## Funcionalidades
-- **Cadastro de carga (wizard):** romaneios com itens, peso, volumes e códigos.
-- **Documentos:** romaneios e etiquetas com código de barras para impressão.
-- **Conferência mobile (Android):** lista de cargas e bipagem de volumes pelo scanner do coletor, com progresso por carga, romaneio e item.
-- **Gestão (web):** dashboard, cargas, clientes, usuários e dados da empresa.
+## Projetos
 
-# WMS: instruções para IA
+| Projeto      | Stack                                                                                     | Função                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `wms-server` | NestJS 11, Prisma 7 (adapter MariaDB), MySQL/MariaDB, JWT (`@nestjs/jwt`), bcryptjs       | API REST (prefixo `/api`, porta 3004, Swagger em `/swagger`), JWT, licença                        |
+| `wms-app`    | Angular 21 (standalone, signals), Tailwind v4, jsbarcode, ngx-toastr, sweetalert2, vitest | Painel web: cargas, clientes, usuários, empresa, impressão de romaneio e etiquetas. **Não bipa.** |
+| `wms-mobile` | Android: Kotlin, Compose (Material 3), Hilt, Retrofit/Gson                                | Login, lista de cargas e bipagem (`POST /api/scans`). Não expede, reabre nem edita.               |
 
-Gestão de cargas, romaneios e conferência de carregamento.
-- Backend: NestJS + Prisma (MySQL/MariaDB). Prefixo `/api`, Swagger em `/swagger` (porta 3004).
-- Frontend web: Angular. Acompanha e edita cargas, gerencia clientes, usuários e empresa. Não bipa.
-- App Android (projeto separado): lista cargas e bipa (`POST /api/scans`).
-- `(?)` = não confirmado.
+## Fluxo principal
 
-## Como trabalhar
-- Responder em pt-BR, objetivo, focado em código. Não gerar documentação (exceto este README, quando pedido).
-- Não assumir campos ou tipos: conferir DTO/schema. Na dúvida, perguntar.
-- Uma pergunta por vez.
-- Sem diferenciação de role no frontend por enquanto (navbar e telas iguais para todos).
+1. Cria-se a carga com romaneios, itens e volumes (`POST /cargos`, uma transação). No web, via wizard.
+2. Imprimem-se romaneio e etiquetas (`wms-app`: `delivery-detail`, `packing-label`).
+3. Conferência no Android: `POST /scans` com `{ code, cargoId }`. Desfazer: `POST /scans/undo`.
+4. Expedição: `POST /cargos/:id/depart`. Reabertura: `POST /cargos/:id/reopen`.
 
-## Backend
-- `prisma/schema.prisma`: client gerado em `generated/prisma`. Imports com extensão `.js` (ex.: `../../../generated/prisma/client.js`).
-- Módulos em `src/features/<módulo>/`: `clients`, `company`, `users`, `summary`, `license-system`, `cargos`, `scans`.
-- `cargos`: `cargos.controller`, `cargos.service`, `cargo-status.service` (depart/reopen), `cargo-lock` (?), `dto/` (`cargo-list-item.dto`, `cargo-response.dto`, `depart-cargo.dto`, `reopen-cargo.dto`).
-- `scans`: `scans.controller`, `scan.service`, `dto/` (`scan-request`, `scan-response`, `list-scans-query`, `scan-log-response`).
-- `src/core/`: `database/prisma.service`, `decorators/` (`current-user.decorator`, `public.decorator`), `utils/` (`validation`, `pagination-query.dto`, `paginated-response`, `date-utils` com `dayRange`).
-- **`PrismaService` não estende `PrismaClient`**: expõe `client`. Consultas: `this.prisma.client.<model>...`; transações: `this.prisma.client.$transaction`.
-- `@CurrentUser('username') actor` injeta o usuário logado. `@Public()` marca rota sem token (login).
-- `core/utils/validation`: `trim`, `trimOrNull`, `digits`, `digitsOrNull`, `upperOrNull`, `ValidationMessages`.
-- Padrões: DTO com class-validator + `ValidationMessages`; `Logger` com `actor=`; `rethrow` (HttpException não vira `error`; P2002 vira 409); transações com timeout (30 s; scans 10 s); lock da carga (`FOR UPDATE`) antes de editar ou bipar; `PATCH` aplica só os campos que mudaram (`diff`) e loga só nomes de campos.
-- `buildDetail` monta a resposta da carga (totais de volumes por carga, romaneio e item).
-- Índices: `Cargo(createdAt)`, `Cargo(status, createdAt)`, `ScanLog(createdAt)`.
+## Modelo de dados (`wms-server/prisma/schema.prisma`)
 
-## Modelo de dados
-`Cargo` 1:N `Delivery` (romaneio, com snapshot achatado do cliente: `clientName`, `clientCity`…) 1:N `DeliveryItem` 1:N `Volume`.
-- `Volume.code` (único) = `{cargoId}-{sequence}-{itemId}-{n}`. É o código da etiqueta e o que o `/scans` recebe. Único por `@unique` no banco e por construção (todos os campos são inteiros). **Não é único entre bancos**: reset/restore do banco ou mais de uma instalação podem gerar o mesmo código em etiquetas diferentes.
-- `ScanLog`: result `OK|ERROR|WARNING|UNDO`, reason `NOT_FOUND|ALREADY_LOADED|WRONG_CARGO|CARGO_DEPARTED`, `device`.
-- `User`: role `ADMIN|OPERATOR|CHECKER`. Outros: `Client`, `Company` (registro único, licença).
-- `Cargo.status`: `OPEN | LOADING | DEPARTED`. `Cargo.pendingAtDeparture` guarda os volumes pendentes na expedição.
-- `Delivery.client` com `onDelete: SetNull`.
+```
+Cargo 1─N Delivery (romaneio) 1─N DeliveryItem 1─N Volume
+Client 1─N Delivery        (Delivery guarda snapshot achatado do cliente: clientName, clientCity…; clientId SetNull)
+ScanLog N─1 Volume | User | Cargo   (FKs de volume/cargo com SetNull)
+Volume N─1 User (loadedBy) · Cargo N─1 User (departedBy)
+Company: registro único (dados da empresa, licenseKey, licenseToken, settings JSON)
+```
+
+- `Volume.code` (único) = `{cargoId}-{sequence}-{itemId}-{n}`. É o código da etiqueta e o que `/scans` recebe. Único no banco, **não entre bancos**: reset/restore ou mais de uma instalação podem repetir o código em etiquetas diferentes.
+- Únicos: `Cargo.loadOrder`, `Delivery.romaneioNumber`, `(Delivery.cargoId, sequence)`, `(Volume.deliveryItemId, number)`.
+- Deletar `Cargo` remove em cascata `Delivery → DeliveryItem → Volume`.
+- `Cargo.pendingAtDeparture`: volumes pendentes no momento da expedição.
+- Índices: `Cargo(createdAt)`, `Cargo(status, createdAt)`, `ScanLog(createdAt)` e os demais do schema.
+
+| Enum             | Valores                                                        |
+| ---------------- | -------------------------------------------------------------- |
+| `UserRole`       | `ADMIN`, `OPERATOR`, `CHECKER`                                 |
+| `CargoStatus`    | `OPEN`, `LOADING`, `DEPARTED`                                  |
+| `DeliveryStatus` | `GENERATED`                                                    |
+| `ScanResult`     | `OK`, `ERROR`, `WARNING`, `UNDO`                               |
+| `ScanReason`     | `NOT_FOUND`, `ALREADY_LOADED`, `WRONG_CARGO`, `CARGO_DEPARTED` |
 
 ## API
-- `POST /users/login` (retorna `{ token }`; `licenseWarning` desativado); `/users`; `/company`; `/clients`; `/summary`; `/license/{usage-report,status,validate,info}`.
-- `/cargos`: `GET` (paginado), `POST`, `GET|PATCH|DELETE /{id}`, `POST /{id}/depart`, `POST /{id}/reopen`.
-- `/scans`: `POST`, `GET`, `POST /undo`.
-- Paginação (cargos, clients, scans): `page` (1), `limit` (10; scans 20 no app; máx 100). Resposta `{ data, total, page, limit, totalPages }`.
-- `GET /cargos`: filtra por `createdAt` com `createdFrom`/`createdTo` (`YYYY-MM-DD`); sem eles, só o dia atual (America/Sao_Paulo); `createdFrom > createdTo` → 400. Outros filtros: `status`, `search` (ordem, motorista, caminhão), `loadDate`.
-- `GET /cargos` e `GET /cargos/{id}`: `totalVolumes` e `loadedVolumes` sempre presentes (carga, romaneio e item). Os itens não trazem a lista de volumes; `weight` é número.
-- Datas `loadDate`/`issueDate` chegam em ISO UTC (`2026-10-15T00:00:00.000Z`).
 
-### Scans
-- `POST /scans` e `POST /scans/undo`: corpo `{ code, cargoId }`; header opcional `x-device-id` (até 100 caracteres, grava em `ScanLog.device`). Ambos respondem 200.
-- Scan: 200 sempre que a carga existe (404 se não). O resultado vem em `result` (`OK|WARNING|ERROR`) e `reason`. `ALREADY_LOADED` vira `WARNING`; as outras recusas viram `ERROR`. Precedência: `CARGO_DEPARTED`, `NOT_FOUND`, `WRONG_CARGO`, `ALREADY_LOADED`.
-- Primeira bipagem aceita: `OPEN` → `LOADING` e `startedAt`. O último volume preenche `endedAt`.
+Prefixo `/api`. Rotas exigem Bearer JWT, exceto as públicas (`@Public()` + `jwt-auth.guard`). Total: 32 rotas. Detalhe completo de DTOs: `/swagger`.
+
+Paginação (cargos, clients, scans): `page` (padrão 1), `limit` (padrão 10, máx. 100). Resposta `{ data, total, page, limit, totalPages }`.
+
+### `/users`
+
+| Método | Rota           | Descrição                                                                                                   |
+| ------ | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| POST   | `/users/login` | Pública. Retorna `{ token }` ou `{ token, licenseWarning }` (string, vem de `license.message`)              |
+| POST   | `/users`       | Criar. `name` ≤191, `username` 3–50 `[A-Za-z0-9._-]` único (409), `password` 6–72, `role` padrão `OPERATOR` |
+| GET    | `/users`       | Não paginado. Filtros: `username` (contém), `role`, `active` (padrão: só ativos)                            |
+| GET    | `/users/:id`   | Usuário ativo (inativo = 404)                                                                               |
+| PATCH  | `/users/:id`   | Todos os campos opcionais; `password` troca a senha                                                         |
+| DELETE | `/users/:id`   | Soft delete (`active=false`)                                                                                |
+
+ID 1 é protegido (400 em PATCH/DELETE). Usuário não pode desativar a si mesmo. Não existe reativação.
+
+### `/company` (registro único, 404 se não cadastrada)
+
+| Método             | Rota            | Descrição                                                     |
+| ------------------ | --------------- | ------------------------------------------------------------- |
+| GET                | `/company`      | `licenseKey` mascarada (`****XXXX`); `licenseToken` nunca sai |
+| PATCH              | `/company`      | `null`/vazio limpa opcional; alterar CNPJ revalida a licença  |
+| GET / PUT / DELETE | `/company/logo` | Logo como data URL PNG/JPEG base64 (ou `null`); DELETE = 204  |
+
+Campos: `cnpj` (14 dígitos, aceita máscara), `name` (razão social, obrigatório), `tradeName`, `stateRegistration` (≤20), `phone` (≤20), `street`, `streetNumber` (≤20), `neighborhood`, `city`, `state` (UF), `zipCode` (8 dígitos).
+
+### `/clients` (paginado)
+
+`GET /clients` (`search` por nome/documento), `GET|PATCH|DELETE /clients/:id`, `POST /clients`. `name` e `city` obrigatórios; `document` opcional, 11 ou 14 dígitos, salvo só com dígitos, único (409). `PATCH`: `null`/vazio limpa opcionais. `DELETE` é real (409 se houver entregas).
+
+### `/cargos` (paginado)
+
+| Método | Rota                 | Descrição                                                                                                                       |
+| ------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/cargos`            | Filtros: `createdFrom`/`createdTo` (`YYYY-MM-DD`), `status`, `search` (ordem, motorista, caminhão), `loadDate`, `page`, `limit` |
+| GET    | `/cargos/:id`        | Romaneios, snapshot do cliente, itens, `totalVolumes`/`loadedVolumes` (carga, romaneio e item)                                  |
+| POST   | `/cargos`            | Cria carga + romaneios + itens + volumes (1 transação)                                                                          |
+| PATCH  | `/cargos/:id`        | Ver regras abaixo                                                                                                               |
+| DELETE | `/cargos/:id`        | Só `OPEN` sem volumes carregados                                                                                                |
+| POST   | `/cargos/:id/depart` | Exige `LOADING` e ≥1 volume carregado; com pendentes exige `force: true` (senão 409 com `pendingVolumes`)                       |
+| POST   | `/cargos/:id/reopen` | Só `DEPARTED`; `reason` obrigatório (≤500)                                                                                      |
+
+- `GET /cargos` sem `createdFrom`/`createdTo` retorna só o dia atual (America/Sao_Paulo); `createdFrom > createdTo` → 400.
+- Itens não trazem lista de volumes; `weight` é número. `loadDate`/`issueDate` chegam em ISO UTC (`2026-10-15T00:00:00.000Z`).
+- `PATCH`: permitido em qualquer status exceto `DEPARTED` (409). `deliveries` é a lista completa: com `id` mantém, sem `id` cria (exige `client` ou `clientId`), ausente remove. A lista não pode ficar vazia; sem `deliveries`, só o cabeçalho muda. Não remove romaneio/item nem reduz volumes já carregados (409; estornar antes com `/scans/undo`). Reenviar romaneio existente sem `client` mantém o snapshot.
+- `romaneioNumber` e `loadOrder` duplicados → 409.
+
+### `/scans`
+
+| Método | Rota          | Descrição                                                                                                                                  |
+| ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| POST   | `/scans`      | `{ code, cargoId }`; header opcional `x-device-id` (≤100, grava em `ScanLog.device`)                                                       |
+| POST   | `/scans/undo` | `{ code, cargoId }`; mesmo header                                                                                                          |
+| GET    | `/scans`      | Filtros `cargoId`, `userId`, `result`, `createdFrom`, `createdTo`, `page`, `limit`. Sem datas, todo o histórico. Cada item traz `userName` |
+
+- Scan: 200 sempre que a carga existe (404 se não). `ALREADY_LOADED` vira `WARNING`; as outras recusas viram `ERROR`. Precedência: `CARGO_DEPARTED` > `NOT_FOUND` > `WRONG_CARGO` > `ALREADY_LOADED`.
+- Primeira bipagem aceita: `OPEN → LOADING` e preenche `startedAt`. O último volume preenche `endedAt`.
 - Undo: só com carga não expedida e volume carregado. 409: carga expedida, volume de outra carga ou volume não carregado. 404: volume inexistente. Limpa `endedAt` se a carga deixa de estar completa; o status continua `LOADING`.
-- Resposta: `result, reason, message, code, cargoId, cargoStatus, totalVolumes, loadedVolumes, volume { id, number, product, romaneioNumber, loaded, loadedAt } | null`. Não traz o id do `ScanLog`: o estorno é pelo `code`. Formato exato da resposta do undo (?).
-- `GET /scans`: filtros `cargoId`, `userId`, `result`, `createdFrom`, `createdTo`, `page`, `limit`. Sem datas, lista todo o histórico. Cada item traz `userName`.
+- Resposta (scan e undo, `ScanResponseDto`): `result, reason, message, code, cargoId, cargoStatus, totalVolumes, loadedVolumes, volume { id, number, product, romaneioNumber, loaded, loadedAt } | null`. No undo: `result: UNDO`, `reason: null`, `volume.loaded: false`. Não traz id do `ScanLog`; o estorno é pelo `code`.
 
-### Users
-- `GET /users` **não é paginado** (array). Filtros: `username` (contém), `role`, `active` (padrão: só ativos).
-- `POST`: `name` (≤191), `username` (3–50, `[A-Za-z0-9._-]`, único → 409), `password` (6–72), `role` (padrão `OPERATOR`), `active`. `PATCH` = todos opcionais (`password` troca a senha).
-- Resposta: `id, name, username, role, active, createdAt, updatedAt` (sem senha).
-- `DELETE` **desativa** (`active=false`). Usuário de ID 1 é protegido (400 em PATCH/DELETE). Usuário não pode desativar a si mesmo. Inativo não é encontrado por `GET /{id}` nem `PATCH` (404): não existe reativação.
+### `/summary`
 
-### Company
-- Registro único. `GET /company` e `PATCH /company` (sem id). 404 se não cadastrada.
-- Campos: `cnpj` (14 dígitos, aceita máscara), `name` (= razão social, obrigatório), `tradeName`, `stateRegistration` (≤20), `phone` (≤20), `street`, `streetNumber` (≤20), `neighborhood`, `city`, `state` (UF), `zipCode` (8 dígitos).
-- Resposta também traz `id`, `licenseKey` (mascarada, `****XXXX`), `settings`, `createdAt`, `updatedAt`. `licenseToken` nunca sai.
-- `null` ou texto vazio limpa campo opcional. Alterar o CNPJ faz a licença ser revalidada.
+`GET /summary?from=&to=` (`YYYY-MM-DD`; padrão: dia 1 do mês até hoje, America/Sao_Paulo, offset fixo -03:00; 400 se `from > to`). Cargas/romaneios/volumes filtram por `Cargo.createdAt`; bipagens por `ScanLog.createdAt`.
 
-### Clients
-- `GET /clients` paginado, `search` por nome ou documento. `POST`, `GET|PATCH|DELETE /{id}`.
-- Campos: `name` (obrigatório, ≤191), `document` (opcional, 11 ou 14 dígitos, aceita máscara, salvo só com dígitos, único → 409), `address`, `neighborhood`, `city` (obrigatória), `state` (UF), `zipCode` (8 dígitos), `phone` (≤20).
-- `PATCH`: `null` ou vazio limpa opcionais. `DELETE` é real, com 409 se houver entregas vinculadas.
+```json
+{
+  "period": { "from": "2026-11-01", "to": "2026-11-12" },
+  "cargos": { "total": 10, "open": 2, "loading": 5, "departed": 3 },
+  "deliveries": 25,
+  "volumes": { "total": 500, "loaded": 380, "pending": 120 },
+  "pendingAtDeparture": 15,
+  "scans": {
+    "total": 400,
+    "ok": 350,
+    "error": 30,
+    "warning": 15,
+    "undo": 5,
+    "byReason": { "NOT_FOUND": 20, "ALREADY_LOADED": 10, "WRONG_CARGO": 5, "CARGO_DEPARTED": 5 }
+  }
+}
+```
 
-### Summary
-- `GET /summary?from=YYYY-MM-DD&to=YYYY-MM-DD`. Padrão: dia 1 do mês até hoje (America/Sao_Paulo, offset fixo -03:00). 400 se `from > to`.
-- Cargas, romaneios e volumes filtram por `Cargo.createdAt`; bipagens por `ScanLog.createdAt`.
-- Resposta: `period`, `cargos {total, open, loading, departed}`, `deliveries`, `volumes {total, loaded, pending}`, `pendingAtDeparture`, `scans {total, ok, error, warning, undo, byReason}`. `byReason` agrupa por `reason` independente do `result`.
+`byReason` agrupa por `reason`, independente do `result`.
 
-## Regras de negócio (cargo)
-- Editar: qualquer status exceto `DEPARTED` (409).
-- Expedir: `LOADING` e ao menos 1 volume carregado. Com pendentes exige `force: true` (senão 409 com `pendingVolumes`).
-- Reabrir: só `DEPARTED`; `reason` obrigatório (até 500).
-- Excluir: só `OPEN` e sem volumes carregados.
-- `PATCH /cargos/{id}`:
-  - `deliveries` é a lista completa: com `id` mantém, sem `id` cria (exige `client` ou `clientId`), ausente remove.
-  - Não remove romaneio/item nem reduz volumes já carregados (409; estornar antes com `/scans/undo`).
-  - Reenviar romaneios existentes sem `client` (snapshot intacto).
-  - Sem `deliveries`, só o cabeçalho muda. A lista não pode ficar vazia.
-- `romaneioNumber` e `loadOrder` são únicos (409).
+### `/license`
 
-## Frontend web (`src/app/`)
-Angular standalone, `inject()`, signals/computed, control flow (`@if/@for/@switch`), reactive forms, Tailwind v4 com tokens de tema (light/dark), ngx-toastr, SweetAlert2, locale pt-BR.
+| Método | Rota                    | Descrição                      |
+| ------ | ----------------------- | ------------------------------ |
+| POST   | `/license/usage-report` | Enviar relatório de uso (202)  |
+| GET    | `/license/status`       | Status da licença              |
+| GET    | `/license/validate`     | Validar licença com o servidor |
+| GET    | `/license/info`         | Info do token de licença       |
 
-- `app.routes.ts`, `app.config.ts`.
-- `layout/app-layout`: casca das rotas autenticadas (navbar no topo, `<router-outlet />` no `<main>`).
-- `core/`: `interceptors/auth.interceptor`, `guards/auth.guard`, `services/` (`auth.service`, `environment` com `environment.apiUrl`, `theme.service`, `license.service`), `types/paginated-response`.
-- `shared/`: `utils/` (`volume-progress`, `delivery-payload` com `toDeliveryDto`, `form-utils`), `toastr/notification.service` (`success`, `error`, `warning`), `alerts/custom-alerts` (`alertError`, `alertLoading`, `closeLoading`, `alertConfirm`, `alertSuccess`, `alertWarning`).
-- `form-utils`: `digitsLength(lengths)` (validator), `onlyDigits`, `orNull`, `httpErrorMessage(err, fallback)`.
-- `features/cargo-registration/`: `pages/cargo-registration`, `services/cargos.service` (**service da API**), `types/cargo` (**tipos da API**).
-- `features/dashboard/`: `pages/dashboard`, `services/summary.service`, `types/summary`.
-- `features/clients/`: `pages/clients`, `services/clients.service`, `types/client`.
-- `features/settings/`: `pages/settings`, `components/company-form`, `components/users-list`, `services/{company,users}.service`, `types/{company,user}`.
-- Demais features: `login`, `cargo-overview`, `cargo-detail`, `delivery-detail`, `packing-label` (etiqueta), `scan-check`.
+## Estrutura de pastas
 
-| Rota | Componente | Função |
-|---|---|---|
-| `''` | `Login` | autenticação; após o login vai para `/dashboard` |
-| `dashboard` | `Dashboard` | resumo (cargas, romaneios, volumes, bipagens) por período, padrão mês atual; botão "Ver cargas" |
-| `cargas` | `CargoOverview` | lista paginada, filtro por data inicial e final de criação, atalhos "Esta semana" e "Este mês" (padrão) |
-| `cargas/novo` | `CargoRegistration` | wizard; envia tudo em um `POST` no último passo |
-| `cargas/:cargoId` | `CargoDetail` | status, expedir/reabrir/excluir, editar cabeçalho, adicionar/remover romaneio, polling de 10 s |
-| `cargas/:cargoId/entregas/:deliveryId` | `DeliveryDetail` | edita romaneio, cliente e itens; imprime romaneio e etiquetas |
-| `conferencia/:cargoId/:deliveryId` | `ScanDelivery` | mock de validação (usa `CargoService` legado); a bipagem real é no Android |
-| `clientes` | `Clients` | formulário de cadastro no topo, tabela paginada com busca abaixo; editar (carrega no formulário) e excluir |
-| `configuracoes` | `Settings` | página única: `CompanyForm` + `UsersList` |
+### `wms-server/`
 
-`authGuard` fica só na rota pai do `AppLayout`; os filhos não repetem. `''` (Login) fica fora do layout.
+```
+prisma/   schema.prisma · migrations/ · seeds/ (company, user, seed)
+src/
+  main.ts · app.module.ts · app.controller.ts · app.service.ts
+  core/
+    database/    prisma.module · prisma.service · prisma.config · prisma
+    decorators/  current-user · public · single-instance
+    guards/      jwt-auth.guard
+    scripts/     database-dump · database-seed · manager-database
+    utils/       date-utils · paginated-response · pagination-query.dto · phone.util · validation
+  features/      controller + module + service + dto/
+    cargos/ (+ cargo-lock.ts, cargo-status.service.ts) · clients/ · company/
+    license-system/ (+ entities/) · scan/ (rota /scans) · summary/ · users/
+```
 
-### Layout
-- Navbar: Dashboard, Cargas, Clientes, Configurações (`routerLinkActive="nav-active"`), voltar/avançar (`Location.back()/forward()`), tema, sair, chip do usuário (payload do JWT).
-- `ThemeService`: signal `theme` (`'dark' | 'light'`), `toggle()`, classe `dark`/`light` no `<html>`, `localStorage['theme']`, padrão claro.
-- Páginas filhas não repetem `min-h-screen`, fundo nem padding (o layout dá `h-screen`, fundo e `p-6`). Wrapper padrão: `max-w-5xl mx-auto flex flex-col gap-6 text-text-primary`.
+### `wms-app/src/app/`
 
-### Estilo (`styles.css`)
-- Tokens em `@theme`, sobrescritos em `.dark`. Utilitários: `bg-bg-base|card|surface|surface-low`, `border-border`, `text-text-primary|secondary|muted|inverse`, `bg-btn-primary-bg`/`hover:bg-btn-primary-hover`, `btn-secondary-{bg,hover,text,border}`, `input-{bg,border,border-focus,text,placeholder}`, `success|warning|danger|info` (+ `-subtle`), `rounded-input|card|badge`.
-- Botão primário: `bg-btn-primary-bg text-text-inverse h-10 px-6 rounded-input font-semibold text-sm hover:bg-btn-primary-hover`. Input: `h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none`.
-- Impressão (romaneio/etiqueta): `--color-print-bg` e `--color-print-ink`, sempre branco/preto, mesmo no tema escuro.
+```
+app.config.ts · app.routes.ts · app.ts · app.html
+core/      guards/auth.guard · interceptors/auth.interceptor
+           services/ (auth, environment, license, platform, print, theme) · types/paginated-response
+features/  pages/ · services/ · types/ · components/
+  login · dashboard · cargo-overview · cargo-registration · cargo-detail
+  delivery-detail (components/romaneio-print) · packing-label (components/barcode, label-card)
+  scan-check (LEGADO) · clients · settings (company-form, company-logo, users-list)
+shared/    alerts · app-layout · offline (not-found, offline) · paginator · toastr
+           utils/ (delivery-payload, delivery-progress [legado], form-utils, volume-progress)
+```
 
-### Auth
-- JWT em `localStorage['token']`, payload `{ userId, username, role, iat, exp }`; `AuthService.getTokenPayload()`.
-- Interceptor: `Authorization: Bearer` só para `apiUrl`; 401 limpa o token e volta para `/`.
-- Guard: token existe, é válido (`exp`) e, opcionalmente, `route.data.role`.
-- A tela de login remove o token ao abrir.
+### `wms-mobile/app/src/main/java/com/carga_gestor/wms_mobile/`
 
-### Armadilhas (web)
+```
+CargaGestorApp.kt · MainActivity.kt
+data/  api/ (ApiService, AuthInterceptor) · model/ (AuthModels, CargoModels) · repository/ (Auth, Cargo)
+di/    AppModule
+ui/    navigation/ (NavGraph, Screen) · theme/ (Color, Theme, ThemeManager, Type)
+       screens/ cargos/ · login/ · scan/ (ScanScreen, ScanViewModel, HardwareScanEffect [sem uso])
+util/  JwtDecoder · NetworkErrorHandler · Resource · TokenManager
+```
+
+## Rotas do web (`wms-app`)
+
+| Rota                                   | Componente          | Função                                                                                  |
+| -------------------------------------- | ------------------- | --------------------------------------------------------------------------------------- |
+| `''`                                   | `Login`             | Fora do layout; vai a `/dashboard` após login                                           |
+| `dashboard`                            | `Dashboard`         | Resumo por período (padrão: mês atual)                                                  |
+| `cargas`                               | `CargoOverview`     | Lista paginada, filtro por data de criação, atalhos "Esta semana" e "Este mês" (padrão) |
+| `cargas/novo`                          | `CargoRegistration` | Wizard; um `POST` no último passo                                                       |
+| `cargas/:cargoId`                      | `CargoDetail`       | Expedir/reabrir/excluir, editar cabeçalho, romaneios; polling de 10 s                   |
+| `cargas/:cargoId/entregas/:deliveryId` | `DeliveryDetail`    | Edita romaneio, cliente e itens; imprime romaneio e etiquetas                           |
+| `conferencia/:cargoId/:deliveryId`     | `ScanDelivery`      | **Legado/mock** (usa `CargoService`); a bipagem real é no Android                       |
+| `clientes`                             | `Clients`           | Formulário no topo, tabela paginada com busca                                           |
+| `configuracoes`                        | `Settings`          | `CompanyForm` + `UsersList`                                                             |
+
+`authGuard` só na rota pai do `AppLayout`. Sem diferenciação por role no frontend (navbar e telas iguais para todos).
+
+## Convenções e armadilhas
+
+### Backend
+
+- `PrismaService` **não** estende `PrismaClient`: use `this.prisma.client.<model>` e `this.prisma.client.$transaction`.
+- Client gerado em `generated/prisma`; imports com extensão `.js` (ex.: `../../../generated/prisma/client.js`).
+- `@CurrentUser('username')` injeta o usuário logado; `@Public()` marca rota sem token.
+- `core/utils/validation`: `trim`, `trimOrNull`, `digits`, `digitsOrNull`, `upperOrNull`, `ValidationMessages`. DTOs com class-validator.
+- Lock da carga (`SELECT ... FOR UPDATE`) antes de editar ou bipar. `cargo-lock.ts` exporta `lockCargoRow`; `scan.service` tem cópia inline (`lockCargo`).
+- Transações com timeout (30 s; scans 10 s). `rethrow`: `HttpException` não vira `error`; P2002 vira 409. `PATCH` aplica só o `diff` e loga só nomes de campos. `Logger` com `actor=`.
+- `buildDetail` monta a resposta da carga (totais por carga, romaneio e item).
+
+### Web
+
 - Ids são `number`. Cliente do romaneio é achatado (`clientName`…), não `client`.
-- Services usam `environment.apiUrl` (de `core/services/environment`).
-- `<input type="number">` precisa de `type` estático, senão o valor vira string e o backend rejeita.
-- `loadDate`/`issueDate` em ISO UTC: exibir com `date: 'dd/MM/yyyy' : 'UTC'`; no `<input type="date">` usar `slice(0, 10)`.
-- "Hoje" em America/Sao_Paulo: `new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())`.
+- Services usam `environment.apiUrl`. Auth: JWT em `localStorage['token']` (payload `{ userId, username, role, iat, exp }`); interceptor só para `apiUrl`; 401 limpa o token e volta a `/`.
 - Não existe endpoint por romaneio: editar romaneio é `PATCH` da carga com a lista completa (`toDeliveryDto`).
-- `CargoDetail`: toda atualização local passa por `setCargo` (incrementa `cargoVersion`, que descarta respostas de polling defasadas).
-- Erros do backend: `error.error.message` (string ou array); usar `httpErrorMessage`.
-- `PATCH` de clients e company: campo vazio vai como `null`. Documento/CNPJ/CEP: só dígitos.
-- Edição de usuário: senha vazia = manter; não enviar `password`.
-- SweetAlert2 renderiza `title` como HTML: escapar texto de usuário. Cores do `alertConfirm` são fixas.
-- Legado do mock, não usar: `CargoService` (`cargo-registration.service`), `types/cargo-registration`, `shared/utils/delivery-progress`.
+- `loadDate`/`issueDate` em ISO UTC: exibir com `date: 'dd/MM/yyyy' : 'UTC'`; `<input type="date">` com `slice(0, 10)`.
+- `<input type="number">` precisa de `type` estático, senão o valor vira string e o backend rejeita.
+- "Hoje" em São Paulo: `new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())`.
+- `CargoDetail`: toda atualização local passa por `setCargo` (incrementa `cargoVersion` para descartar polling defasado).
+- Erros do backend: `error.error.message` (string ou array); usar `httpErrorMessage`. `PATCH` de clients/company: vazio vai como `null`; documento/CNPJ/CEP só dígitos. Edição de usuário: senha vazia = não enviar `password`.
+- Tema: tokens em `@theme` (`styles.css`) sobrescritos em `.dark`; `ThemeService` guarda em `localStorage['theme']`. Impressão sempre branco/preto (`--color-print-bg`, `--color-print-ink`).
+- SweetAlert2 renderiza `title` como HTML: escapar texto de usuário.
+- Legado, não usar: `CargoService` (`cargo-registration.service`), `types/cargo-registration`, `shared/utils/delivery-progress`.
 
-## App Android (`com.carga_gestor.wms_mobile`)
+### Android
 
-### Visão geral
-- Kotlin, Jetpack Compose (Material 3), Hilt, Retrofit com Gson. Base URL `http://<host>:3004/api`.
-- Escopo: login, listar cargas e bipar volumes. Não expede, reabre nem edita cargas.
-- Dispositivo alvo: coletor RT40 (identifica-se como "BLD PDA", Android 10). O scanner está em **modo teclado**, com **sufixo Enter** ativo: o código é "digitado" no campo focado. O modo broadcast existe na configuração do aparelho (`com.bld.settings.scan`), mas não é usado.
-- Sem câmera: a leitura é feita pelo scanner de hardware.
+- Base URL `http://<host>:3004/api`. Token enviado por `AuthInterceptor` (OkHttp) via `TokenManager`. Header `x-device-id` = `"$MODEL ($ANDROID_ID)"`.
+- Dispositivo alvo: coletor RT40 (Android 10), scanner em **modo teclado** com sufixo Enter; sem câmera. O código é digitado num `EditText` nativo (`AndroidView`).
+- Gson ignora nulidade do Kotlin: campo que o backend pode omitir deve ser `?`. `weight` é `Double?`.
+- `loadDate`/`issueDate` em ISO UTC: exibir `take(10)` sem converter fuso. O scanner lê EAN também, mas a API só aceita `Volume.code` (EAN retorna `NOT_FOUND`).
+- Não sincronizar texto Compose → `EditText` (`setText` no `update` derrubou o app); limpar com `text.clear()`. Não usar `FocusRequester` nem `InterceptPlatformTextInput` no campo de código.
+- `AuthModels.licenseWarning` está como `Boolean?`, mas o backend envia string (hoje o campo não é usado no app).
+- Código sem uso: `HardwareScanEffect`, `undoLast`/`lastOkCode` no `ScanViewModel`, `ScanUndoRequest` (contrato antigo `scanLogId`), `Log.d` de depuração.
 
-### Estrutura
-- `data/api/ApiService`: interface Retrofit (`suspend`).
-- `data/model/`: `CargoSummary`, `CargoDetail`, `DeliveryDetail`, `DeliveryItemDetail`, `ScanRequest`, `ScanResponse`, `ScanVolume`, `ScanLog`, `PaginatedResponse`, enums (`CargoStatus`, `ScanResult`, `ScanReason`).
-- `data/repository/`: `AuthRepository` (login, token, logout), `CargoRepository` (cargas, scans, `getCargo`).
-- `util/`: `Resource`, `NetworkErrorHandler`, `JwtDecoder`, `TokenManager`.
-- `ui/navigation/`: `ScreenRoutes` (`LOGIN`, `MAIN`, `CARGO_DETAIL`, `SCAN`, `SETTINGS`), `buildNavGraph`.
-- `ui/theme/`: `Color`, `Theme`, `Type`, `ThemeManager`.
-- `ui/screens/login/`: `LoginScreen`, `LoginViewModel`. `ui/screens/cargos/`: `CargoListScreen`, `CargoListViewModel`.
-- `ui/screens/scan/`: `ScanScreen` (inclui `CodeInput`, `SummaryHeader`, `FeedbackBanner`, `DeliveryCard`), `ScanViewModel`.
+## Como rodar
 
-### Camadas
-- Screen (Composable) observa `uiState` com `collectAsStateWithLifecycle` e dispara ações no ViewModel.
-- ViewModel (Hilt) guarda um `MutableStateFlow<UiState>`; o carregamento é controlado por flags no estado (`isLoading`, `isLoadingMore`).
-- Repository usa `safeCall`: executa a chamada e devolve `Resource.Success(data)` ou `Resource.Error(message)`; repassa `CancellationException`.
-- `Resource`: `Success(data)`, `Error(message, code, throwable)`, `Loading` (sem uso).
-- `NetworkErrorHandler` converte exceção em mensagem pt-BR: 400 "Dados inválidos: ...", 401 fixa, 403, 404 e 409 com o `message` do corpo (?), 500, demais "Erro <code>"; falhas de rede (host, conexão, timeout). O `message` do corpo pode ser string ou array.
-- Token enviado em `Authorization: Bearer` por interceptor do OkHttp (?).
+Cada projeto tem seu `package.json` (`wms-server`, `wms-app`). O server lê configuração de um `.env` na raiz de `wms-server` (o instalador Windows copia esse arquivo).
 
-### Fluxo
-1. `login`: ao abrir, `checkSavedToken()` (token salvo e não expirado, via `JwtDecoder`) leva direto a `main`. No login manual: `POST /users/login`, decodifica o JWT (`userId`, `username`, `role`), salva token, username e role e vai a `main`. Erro vira snackbar.
-2. `main`: lista de cargas; tocar numa carga navega para `scan/{cargoId}` (o argumento opcional `deliveryId` da rota é ignorado).
-3. `scan/{cargoId}`: o usuário só bipa; o backend identifica volume e romaneio pelo código.
-4. Sair: `AuthRepository.logout()` limpa o token e depois navega para `login` com `popUpTo(main) { inclusive }`.
-5. Validação do login: usuário e senha vazios são inválidos; o erro aparece ao sair do campo ou ao enviar.
+### `wms-server` (executar dentro de `wms-server/`)
 
-### Lista de cargas
-- Filtros por `createdAt` (`createdFrom`/`createdTo`, `YYYY-MM-DD`), com datas em America/Sao_Paulo (`LocalDate.now(ZoneId)`):
-  - Hoje: hoje → hoje.
-  - Esta semana (padrão): segunda-feira anterior ou igual a hoje → hoje (?).
-  - Este mês: dia 1 → hoje.
-  - Data início / data fim: abrem `DatePicker` e mudam o filtro para `CUSTOM`. Início > fim mostra snackbar e não recarrega.
-- `reload()` cancela a carga em andamento e volta à página 1. `loadMore()` pede `page + 1` quando faltam até 3 itens para o fim da lista, sem carga em andamento e com `page < totalPages`; os resultados são mesclados com `distinctBy { id }`. Página de 20.
-- Aparecem todas as cargas, inclusive `DEPARTED`. Card: `loadOrder`, badge (`OPEN` Aberta, `LOADING` Carregando, `DEPARTED` Expedida), motorista · caminhão, `loadDate`, número de romaneios e barra `loadedVolumes/totalVolumes`.
-- Ao voltar da conferência, a lista fica defasada: `refreshSilently()` em `ON_RESUME` (`load(reset = true, silent = true)`, sem spinner de tela cheia) (?).
+| Comando                                          | O que faz                                        |
+| ------------------------------------------------ | ------------------------------------------------ |
+| `npm run start:dev`                              | Desenvolvimento com watch (`nest start --watch`) |
+| `npm run build` / `npm run start:prod`           | Compila (`nest build`) e roda `node dist/main`   |
+| `npm run prisma:generate`                        | Gera o client em `generated/prisma`              |
+| `npm run prisma:migrate`                         | `prisma migrate dev`                             |
+| `npm run prisma:reset`                           | `prisma migrate reset --force` (apaga o banco)   |
+| `npm run prisma:seed`                            | Roda `prisma/seeds/seed.ts` (company, user)      |
+| `npm run prisma:studio`                          | Prisma Studio                                    |
+| `npm run lint` · `npm test` · `npm run test:e2e` | ESLint (com `--fix`), Jest unit, Jest e2e        |
 
-### Bipagem (`scan/{cargoId}`)
-- Entrada: scanner em modo teclado digita no `CodeInput`, um `EditText` nativo (`AndroidView`) com foco pedido uma vez (`post { requestFocus() }`). O Enter (sufixo do scanner, teclado ou ação "Concluído") dispara o envio; o botão de enviar também. `showSoftInputOnFocus = false`: o teclado não abre; o botão "Usar teclado" libera a digitação manual (útil em outros aparelhos).
-- O texto fica só no `EditText` (o Compose ouve via `TextWatcher`); a limpeza após o envio usa `clearTick` + `text.clear()`.
-- `ScanViewModel.onCodeScanned(code)`: ignora se `isProcessing`; com `removeMode` chama `removeByCode`, senão `scanCode`.
-- `scanCode`: `CargoRepository.scan(code, cargoId)` → `POST /scans` com header `x-device-id` = `"$MODEL ($ANDROID_ID)"` (até 100 caracteres). Resposta 200 mesmo quando recusa: o feedback vem de `result` e `reason`; 404 = carga inexistente.
-- Totais e status do topo vêm da resposta do scan. Após `OK` (e após remoção), a carga é recarregada (`GET /cargos/{id}`) para atualizar o progresso por romaneio e item, que a resposta do scan não traz.
-- Modo "Remover um volume": o próximo código vai para `POST /scans/undo` (`{ code, cargoId }`) e o modo desliga sozinho após sucesso. Erros 404/409 chegam como `Resource.Error` (banner de erro).
-- Feedback (banner colorido, texto simples): `OK` "Volume carregado" (verde), `WARNING` "Este volume já foi bipado" (amarelo), `UNDO` "Volume removido" (amarelo), `ERROR` por `reason`: "Código não reconhecido", "Volume de outra carga", "Esta carga já saiu".
-- Layout: resumo (X de Y volumes + barra colorida), campo de código, banners, lista de romaneios (cidade, cliente, progresso e itens com `carregados/total`). Cores: verde completo, amarelo parcial, cinza pendente.
-- Carga `DEPARTED` recusa a bipagem com `CARGO_DEPARTED`.
+### `wms-app` (executar dentro de `wms-app/`)
 
-### Tema
-- Tokens do web em `Color.kt`, mapeados para `lightColorScheme`/`darkColorScheme` em `Theme.kt`. Tokens sem equivalente no Material 3 ficam em `MaterialTheme.extraColors` (`success`, `warning`, `primarySubtle`, `bgCard`, `inputBg`, `printBg`, `printInk`…).
-- Cor dinâmica (Android 12+) desligada, para manter a paleta. Shapes: 4 dp (input, card) e 12 dp (badge). Botão primário: texto `#FFFFFF` nos dois temas.
-- `ThemeManager`: `override` nulo = segue o sistema; `set(dark)` persiste em `SharedPreferences`. `WmsmobileTheme(darkTheme: Boolean? = null)`. O toggle fica na tela de login.
+`npm start` (`ng serve`) · `npm run build` (`ng build`) · `npm test` (`ng test`, vitest).
 
-### Armadilhas (Android)
-- O Gson ignora a nulidade do Kotlin: campo que o backend pode omitir deve ser `?`. Os itens do romaneio não trazem `volumes`; `weight` é `Double?`.
-- `loadDate`/`issueDate` chegam em ISO UTC: exibir `take(10)` em `dd/MM/yyyy`, sem converter fuso.
-- `java.time` exige `minSdk` 26 ou desugaring. O `DatePicker` devolve milissegundos em UTC: converter com `ZoneOffset.UTC`.
-- O scroll da tela de login com teclado depende de `adjustResize` no Manifest e de `enableEdgeToEdge()` (?).
-- `@SuppressLint("HardwareIds")` não vale em propriedade `by lazy`: fica na função que lê o `ANDROID_ID`.
-- Dois contratos que mudaram: o undo recebe `{ code, cargoId }` (não `scanLogId`/`reason`) e `GET /scans` filtra por `createdFrom`/`createdTo`.
-- `EditText.setText` dentro do `update` do `AndroidView` derrubou o app (`ComposeRuntimeError`, `restartInput` + `focusSearch` durante a aplicação de mudanças): limpar com `text.clear()` e não sincronizar texto do Compose para o `EditText`.
-- `FocusRequester` sem `Modifier.focusRequester` dá `IllegalStateException`: o `CodeInput` é um `EditText`, não usar `FocusRequester`.
-- `InterceptPlatformTextInput` bloqueou a entrada do scanner (nada era digitado): não usar.
-- O RT40 sem sufixo Enter só preenche o campo; com o sufixo ativo o envio é automático.
-- O scanner lê EAN (ex.: `7894900011715`), que a API devolve como `NOT_FOUND`; só o `Volume.code` é aceito.
-- Testar sem o aparelho: `adb shell input text "2-1-1-1" && adb shell input keyevent 66` (digita e envia Enter no campo focado).
-- Com mais de um dispositivo no `adb`, usar `adb -s <serial>`; aparelho `offline` não gera logcat.
-- Warning `OnBackInvokedCallback is not enabled`: `android:enableOnBackInvokedCallback="true"` no `<application>`.
+### Build e distribuição (Windows)
 
-## Pendências
+- `npm run release`: `build` + `build:bundle` (esbuild gera `release/server.js`, alvo node18, minificado).
+- `npm run copy:wms-app`: copia o build do app para `wms-server/public/dist/wms-app/browser`.
+- `npm run installer:win`: antes roda `preinstaller:win` (build do server, build do `wms-app` e `copy:wms-app`); depois gera o bundle, copia `server.js`, `.env` e `public` para `nsis-installer-windows/` e executa `build.sh`.
+- `npm run manager-db:win` / `manager-db:linux`: empacotam o gerenciador de banco (`core/scripts/manager-database`) em executável (`pkg`, node18) em `release/`.
 
-### Concluídas
-- [x] Filtros de período e botões "Esta semana"/"Este mês" no `CargoOverview`
-- [x] Rota `/configuracoes` e página Settings (`CompanyForm` + `UsersList`)
-- [x] Dashboard com `SummaryService`
-- [x] Rotas 404 e offline (`NotFound`, `OfflineComponent`)
-- [x] Validação `createdFrom > createdTo` no frontend e no backend (400)
-- [x] Índices no schema Prisma
-- [x] `totalVolumes`/`loadedVolumes` por romaneio e item no backend; `?` removidos dos types do frontend
-- [x] Soft delete de usuário; backend impede o usuário de se desativar
-- [x] Tela de licença
-- [x] Filtros `status`, `search` e `loadDate` e modo "todas as datas" no `CargoOverview`
-- [x] CSS: `avatar-gradient`, `nav-active`, `bg-grid`, `--color-bg-sidebar`
-- [x] Decisão sobre o `ScanDelivery` / rota `conferencia/...`
-- [x] Android: tema, login, repositórios, lista de cargas com filtros e `x-device-id`
-- [x] Android: tela de bipagem (`ScanScreen`/`ScanViewModel`): entrada pelo scanner em modo teclado, feedback por `result`/`reason`, progresso por romaneio e item, modo remover
-- [x] Android: `ScreenRoutes` sem `CARGO_LIST` e sealed `Screen` removida; `ScanPlaceholderScreen` removida do grafo (?)
+### `wms-mobile`
 
-### Em aberto (Android)
-- [ ] **Teste ponta a ponta no RT40 com etiqueta real**: Code 39 chega como `{cargoId}-{sequence}-{itemId}-{n}` (sem `*`)? `OK`, `WARNING` na repetição e modo remover; confirmar o formato da resposta de `POST /scans/undo` (?)
-- [ ] **Confirmar que a etiqueta (`PackingLabel`) imprime código de barras real do `Volume.code`** (a classe `.barcode` do `styles.css` é só um desenho em CSS; a etiqueta mostra `*2-1-1-1*`, padrão Code 39)
-- [ ] **Recarregar a lista de cargas ao voltar da conferência** (`refreshSilently` em `ON_RESUME`) (?)
-- [ ] **Limpar o `ApiService`**: remover `departCargo` e `reopenCargo`; `getCompany()` retorna `User` (tipo errado); atualizar o KDoc do `undoScan` (`{ code, cargoId }`); remover `ScanUndoRequest`
-- [ ] **Remover código sem uso**: `HardwareScanEffect`, `KeyboardScanCapture`, `undoLast`/`lastOkCode` no `ScanViewModel`, `Log.d` de depuração, `MainPlaceholderScreen` (?)
-- [ ] **Rotas `cargo_detail` e `settings`**: ainda são placeholders; implementar ou remover
-- [ ] **Unicidade do `Volume.code` entre bancos**: decidir se há risco (reset do banco ou mais de uma instalação com etiquetas em circulação)
+Projeto Gradle (`./gradlew`), módulo `app`.
 
-Backend e frontend web: sem pendências.
+<!-- Preencher: chaves do .env do wms-server, porta/URL configurada no wms-app (environment.ts) e minSdk/URL base do mobile -->

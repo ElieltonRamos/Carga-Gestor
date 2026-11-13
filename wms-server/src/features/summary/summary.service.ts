@@ -1,33 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SummaryQueryDto } from './dto/summary-query.dto';
 import { PrismaService } from '../../core/database/prisma.service';
-
-const TZ = 'America/Sao_Paulo';
-const ymd = (d: Date) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+import { resolveRange } from './summary-range';
 
 @Injectable()
 export class SummaryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private resolveRange({ from, to }: SummaryQueryDto) {
-    const today = ymd(new Date());
-    const fromStr = from ?? `${today.slice(0, 8)}01`;
-    const toStr = to ?? today;
-    if (fromStr > toStr)
-      throw new BadRequestException('from não pode ser maior que to');
-
-    // -03:00 fixo (sem horário de verão no Brasil atualmente)
-    return {
-      from: fromStr,
-      to: toStr,
-      gte: new Date(`${fromStr}T00:00:00.000-03:00`),
-      lte: new Date(`${toStr}T23:59:59.999-03:00`),
-    };
-  }
-
   async overview(query: SummaryQueryDto) {
-    const { from, to, gte, lte } = this.resolveRange(query);
+    const { from, to, gte, lte } = resolveRange(query);
 
     const cargoWhere = { createdAt: { gte, lte } };
     const volumeWhere = { deliveryItem: { delivery: { cargo: cargoWhere } } };

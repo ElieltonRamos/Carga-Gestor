@@ -4,6 +4,7 @@ import { catchError, filter, of, switchMap } from 'rxjs';
 import { SummaryService } from '../services/summary.service';
 import { ScanReason } from '../types/summary';
 import { RouterLink } from '@angular/router';
+import { DashboardReports } from '../components/dashboard-reports';
 
 const todayInSaoPaulo = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
@@ -17,7 +18,7 @@ const REASON_LABELS: Record<ScanReason, string> = {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink],
+  imports: [RouterLink, DashboardReports],
   templateUrl: './dashboard.html',
 })
 export class Dashboard {

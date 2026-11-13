@@ -1,0 +1,313 @@
+@if (reports(); as r) {
+  <div class="flex flex-col gap-4 md:gap-6">
+    <h2 class="text-lg md:text-xl font-bold">Relatórios</h2>
+
+    <!-- Tempo de carregamento -->
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+        Tempo de carregamento
+      </span>
+      @if (r.loadingTime.cargos) {
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <p class="text-2xl font-bold">{{ r.loadingTime.cargos }}</p>
+            <p class="text-xs text-text-secondary">Cargas iniciadas</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold">{{ duration(r.loadingTime.avgLoadSeconds) }}</p>
+            <p class="text-xs text-text-secondary">Média até completar</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold">{{ duration(r.loadingTime.avgToDepartSeconds) }}</p>
+            <p class="text-xs text-text-secondary">Média até expedir</p>
+          </div>
+          <div>
+            @if (r.loadingTime.longestLoad; as l) {
+              <p class="text-2xl font-bold">{{ duration(l.seconds) }}</p>
+              <p class="text-xs text-text-secondary">Mais longa: {{ l.loadOrder }}</p>
+            } @else {
+              <p class="text-2xl font-bold">—</p>
+              <p class="text-xs text-text-secondary">Mais longa</p>
+            }
+          </div>
+        </div>
+      } @else {
+        <p class="text-sm text-text-muted">Sem dados no período.</p>
+      }
+    </div>
+
+    <!-- Produtividade por operador -->
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+        Produtividade por operador
+      </span>
+      @if (r.operators.length) {
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-text-secondary uppercase">
+              <tr>
+                <th class="text-left font-bold py-1 pr-3">Operador</th>
+                <th class="text-right font-bold py-1 px-2">Volumes</th>
+                <th class="text-right font-bold py-1 px-2">Bipagens</th>
+                <th class="text-right font-bold py-1 px-2">OK</th>
+                <th class="text-right font-bold py-1 px-2">Alertas</th>
+                <th class="text-right font-bold py-1 px-2">Erros</th>
+                <th class="text-right font-bold py-1 pl-2">Estornos</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (o of r.operators; track o.userId) {
+                <tr class="border-t border-border">
+                  <td class="py-1.5 pr-3">{{ o.name ?? '#' + o.userId }}</td>
+                  <td class="text-right py-1.5 px-2 font-bold">{{ o.volumesLoaded }}</td>
+                  <td class="text-right py-1.5 px-2">{{ o.scans.total }}</td>
+                  <td class="text-right py-1.5 px-2 text-success">{{ o.scans.ok }}</td>
+                  <td class="text-right py-1.5 px-2 text-warning">{{ o.scans.warning }}</td>
+                  <td class="text-right py-1.5 px-2">{{ o.scans.error }}</td>
+                  <td class="text-right py-1.5 pl-2">{{ o.scans.undo }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="text-sm text-text-muted">Sem dados no período.</p>
+      }
+    </div>
+
+    <!-- Bipagens por dispositivo -->
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+        Bipagens por dispositivo
+      </span>
+      @if (r.devices.length) {
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-text-secondary uppercase">
+              <tr>
+                <th class="text-left font-bold py-1 pr-3">Dispositivo</th>
+                <th class="text-right font-bold py-1 px-2">Bipagens</th>
+                <th class="text-right font-bold py-1 px-2">OK</th>
+                <th class="text-right font-bold py-1 px-2">Alertas</th>
+                <th class="text-right font-bold py-1 px-2">Erros</th>
+                <th class="text-right font-bold py-1 pl-2">Estornos</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of r.devices; track d.device ?? 'none') {
+                <tr class="border-t border-border">
+                  <td class="py-1.5 pr-3 min-w-0 wrap-break-word">
+                    {{ d.device ?? 'Não informado' }}
+                  </td>
+                  <td class="text-right py-1.5 px-2 font-bold">{{ d.scans.total }}</td>
+                  <td class="text-right py-1.5 px-2 text-success">{{ d.scans.ok }}</td>
+                  <td class="text-right py-1.5 px-2 text-warning">{{ d.scans.warning }}</td>
+                  <td class="text-right py-1.5 px-2">{{ d.scans.error }}</td>
+                  <td class="text-right py-1.5 pl-2">{{ d.scans.undo }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="text-sm text-text-muted">Sem dados no período.</p>
+      }
+    </div>
+
+    <!-- Bipagens por dia e por hora -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+          Bipagens por dia
+        </span>
+        @if (r.scansByDay.length) {
+          <div class="overflow-x-auto">
+            <div class="flex items-end gap-1 h-28 min-w-full">
+              @for (d of r.scansByDay; track d.day) {
+                <div
+                  class="flex-1 min-w-2 bg-success rounded-t"
+                  [style.height.%]="pct(d.total, dayMax())"
+                  [title]="dayLabel(d.day) + ': ' + d.total + ' bipagens'"
+                ></div>
+              }
+            </div>
+          </div>
+          <div class="flex justify-between text-xs text-text-secondary">
+            <span>{{ dayLabel(r.scansByDay[0].day) }}</span>
+            <span>{{ dayLabel(r.scansByDay[r.scansByDay.length - 1].day) }}</span>
+          </div>
+        } @else {
+          <p class="text-sm text-text-muted">Sem dados no período.</p>
+        }
+      </div>
+
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+          Bipagens por hora do dia
+        </span>
+        @if (hourMax() > 0) {
+          <div class="flex items-end gap-1 h-28">
+            @for (h of r.scansByHour; track h.hour) {
+              <div
+                class="flex-1 min-w-1 bg-success rounded-t"
+                [style.height.%]="pct(h.total, hourMax())"
+                [title]="h.hour + 'h: ' + h.total + ' bipagens'"
+              ></div>
+            }
+          </div>
+          <div class="flex justify-between text-xs text-text-secondary">
+            <span>0h</span>
+            <span>12h</span>
+            <span>23h</span>
+          </div>
+        } @else {
+          <p class="text-sm text-text-muted">Sem dados no período.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Expedidas com pendência -->
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+        Expedidas com volumes pendentes
+      </span>
+      @if (r.departedWithPending.length) {
+        <ul class="flex flex-col text-sm">
+          @for (c of r.departedWithPending; track c.id) {
+            <li class="border-t border-border first:border-t-0 py-2">
+              <a
+                [routerLink]="['/cargas', c.id]"
+                class="flex flex-wrap justify-between gap-x-3 gap-y-1 hover:text-text-secondary"
+              >
+                <span class="font-bold">{{ c.loadOrder }}</span>
+                <span>{{ c.pendingAtDeparture }} pendentes</span>
+                <span class="w-full text-xs text-text-secondary">
+                  {{ c.driverName ?? 'Sem motorista' }} · {{ c.truck ?? 'Sem caminhão' }}
+                  @if (c.departedAt) {
+                    · {{ c.departedAt | date: 'dd/MM/yyyy HH:mm' }}
+                  }
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-sm text-text-muted">Nenhuma expedição com pendência no período.</p>
+      }
+    </div>
+
+    <!-- Cargas por motorista / caminhão -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+          Cargas por motorista
+        </span>
+        @if (r.cargosByDriver.length) {
+          <ul class="flex flex-col gap-1 text-sm">
+            @for (row of r.cargosByDriver; track row.label ?? 'none') {
+              <li class="flex justify-between gap-3">
+                <span class="min-w-0 wrap-break-word">{{ row.label ?? 'Não informado' }}</span>
+                <span class="font-bold">{{ row.count }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-sm text-text-muted">Sem dados no período.</p>
+        }
+      </div>
+
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+          Cargas por caminhão
+        </span>
+        @if (r.cargosByTruck.length) {
+          <ul class="flex flex-col gap-1 text-sm">
+            @for (row of r.cargosByTruck; track row.label ?? 'none') {
+              <li class="flex justify-between gap-3">
+                <span class="min-w-0 wrap-break-word">{{ row.label ?? 'Não informado' }}</span>
+                <span class="font-bold">{{ row.count }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-sm text-text-muted">Sem dados no período.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Volumes e peso por cliente / cidade -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+          Volumes e peso por cliente (top 10)
+        </span>
+        @if (r.byClient.length) {
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-xs text-text-secondary uppercase">
+                <tr>
+                  <th class="text-left font-bold py-1 pr-3">Cliente</th>
+                  <th class="text-right font-bold py-1 px-2">Romaneios</th>
+                  <th class="text-right font-bold py-1 px-2">Volumes</th>
+                  <th class="text-right font-bold py-1 pl-2">Peso</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of r.byClient; track row.label) {
+                  <tr class="border-t border-border">
+                    <td class="py-1.5 pr-3 min-w-0 wrap-break-word">{{ row.label }}</td>
+                    <td class="text-right py-1.5 px-2">{{ row.deliveries }}</td>
+                    <td class="text-right py-1.5 px-2 font-bold">{{ row.volumes }}</td>
+                    <td class="text-right py-1.5 pl-2">{{ row.weight | number: '1.0-3' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-text-muted">Sem dados no período.</p>
+        }
+      </div>
+
+      <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+        <span class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+          Volumes e peso por cidade (top 10)
+        </span>
+        @if (r.byCity.length) {
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-xs text-text-secondary uppercase">
+                <tr>
+                  <th class="text-left font-bold py-1 pr-3">Cidade</th>
+                  <th class="text-right font-bold py-1 px-2">Romaneios</th>
+                  <th class="text-right font-bold py-1 px-2">Volumes</th>
+                  <th class="text-right font-bold py-1 pl-2">Peso</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of r.byCity; track row.label) {
+                  <tr class="border-t border-border">
+                    <td class="py-1.5 pr-3 min-w-0 wrap-break-word">{{ row.label }}</td>
+                    <td class="text-right py-1.5 px-2">{{ row.deliveries }}</td>
+                    <td class="text-right py-1.5 px-2 font-bold">{{ row.volumes }}</td>
+                    <td class="text-right py-1.5 pl-2">{{ row.weight | number: '1.0-3' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-sm text-text-muted">Sem dados no período.</p>
+        }
+      </div>
+    </div>
+  </div>
+} @else if (failed()) {
+  <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+    Não foi possível carregar os relatórios.
+  </div>
+} @else {
+  <div class="bg-bg-card border border-border rounded-card p-6 text-center text-text-muted">
+    Carregando relatórios...
+  </div>
+}

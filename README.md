@@ -43,7 +43,7 @@ Company: registro único (dados da empresa, licenseKey, licenseToken, settings J
 
 ## API
 
-Prefixo `/api`. Rotas exigem Bearer JWT, exceto as públicas (`@Public()` + `jwt-auth.guard`). Total: 32 rotas. Detalhe completo de DTOs: `/swagger`.
+Prefixo `/api`. Rotas exigem Bearer JWT, exceto as públicas (`@Public()` + `jwt-auth.guard`). Total: 33 rotas (3 públicas: `POST /users/login`, `POST /license/usage-report`, `GET /license/status`). Detalhe completo de DTOs: `/swagger`.
 
 Paginação (cargos, clients, scans): `page` (padrão 1), `limit` (padrão 10, máx. 100). Resposta `{ data, total, page, limit, totalPages }`.
 
@@ -108,6 +108,23 @@ Campos: `cnpj` (14 dígitos, aceita máscara), `name` (razão social, obrigatór
 
 `GET /summary?from=&to=` (`YYYY-MM-DD`; padrão: dia 1 do mês até hoje, America/Sao_Paulo, offset fixo -03:00; 400 se `from > to`). Cargas/romaneios/volumes filtram por `Cargo.createdAt`; bipagens por `ScanLog.createdAt`.
 
+**Relatórios estendidos**  
+`GET /summary/reports?from=&to=` (mesmo período do `/summary`). Retorna:
+
+- **operadores**: `userId`, `name`, `volumesLoaded`, `scans { ok, error, warning, undo, total }`
+- **dispositivos**: `device` (string|null), `scans { ok, error, warning, undo, total }`
+- **tempo de carregamento**: `cargos` (qtd com startedAt), `avgLoadSeconds` (startedAt→endedAt), `avgToDepartSeconds` (startedAt→departedAt), `longestLoad { loadOrder, seconds }`
+- **expedidas com pendência**: até 10 cargas `DEPARTED` com `pendingAtDeparture > 0` (ordem decrescente), traz `loadOrder`, `pendingAtDeparture`, `departedAt`, `driverName`, `truck`
+- **bipagens por dia**: array `{ day: YYYY-MM-DD, ok, error, warning, undo, total }` (fuso America/Sao_Paulo via `CONVERT_TZ(created_at, '+00:00', '-03:00')`)
+- **bipagens por hora**: array 24 posições `{ hour: 0–23, total }` (mesmo fuso)
+- **cargas por motorista**: top `{ label, count }` (agrupa `driverName`)
+- **cargas por caminhão**: top `{ label, count }` (agrupa `truck`)
+- **volumes/peso por cliente**: top 10 `{ label: clientName, volumes, weight, deliveries }`
+- **volumes/peso por cidade**: top 10 `{ label: clientCity, volumes, weight, deliveries }`
+
+> ⚠️ **Peso** — `DeliveryItem.weight` é **peso total do item** (não multiplica por `quantity`). A soma no relatório usa o valor direto.  
+> ⚠️ **Fuso do banco** — `created_at` é gravado em **UTC** pelo Prisma. As queries SQL cruas de bipagens por dia/hora usam `CONVERT_TZ(created_at, '+00:00', '-03:00')` para America/Sao_Paulo (offset fixo -03:00, sem horário de verão).
+
 ```json
 {
   "period": { "from": "2026-11-01", "to": "2026-11-12" },
@@ -153,7 +170,7 @@ src/
     utils/       date-utils · paginated-response · pagination-query.dto · phone.util · validation
   features/      controller + module + service + dto/
     cargos/ (+ cargo-lock.ts, cargo-status.service.ts) · clients/ · company/
-    license-system/ (+ entities/) · scan/ (rota /scans) · summary/ · users/
+    license-system/ (+ entities/) · scan/ (rota /scans) · summary/ (reports.service.ts, summary-range.ts) · users/
 ```
 
 ### `wms-app/src/app/`
@@ -163,7 +180,7 @@ app.config.ts · app.routes.ts · app.ts · app.html
 core/      guards/auth.guard · interceptors/auth.interceptor
            services/ (auth, environment, license, platform, print, theme) · types/paginated-response
 features/  pages/ · services/ · types/ · components/
-  login · dashboard · cargo-overview · cargo-registration · cargo-detail
+  login · dashboard (components/dashboard-reports, types/reports.ts) · cargo-overview · cargo-registration · cargo-detail
   delivery-detail (components/romaneio-print) · packing-label (components/barcode, label-card)
   scan-check (LEGADO) · clients · settings (company-form, company-logo, users-list)
 shared/    alerts · app-layout · offline (not-found, offline) · paginator · toastr
@@ -186,7 +203,7 @@ util/  JwtDecoder · NetworkErrorHandler · Resource · TokenManager
 | Rota                                   | Componente          | Função                                                                                  |
 | -------------------------------------- | ------------------- | --------------------------------------------------------------------------------------- |
 | `''`                                   | `Login`             | Fora do layout; vai a `/dashboard` após login                                           |
-| `dashboard`                            | `Dashboard`         | Resumo por período (padrão: mês atual)                                                  |
+| `dashboard`                            | `Dashboard`         | Resumo por período (padrão: mês atual) + relatórios do período (`/summary/reports`)     |
 | `cargas`                               | `CargoOverview`     | Lista paginada, filtro por data de criação, atalhos "Esta semana" e "Este mês" (padrão) |
 | `cargas/novo`                          | `CargoRegistration` | Wizard; um `POST` no último passo                                                       |
 | `cargas/:cargoId`                      | `CargoDetail`       | Expedir/reabrir/excluir, editar cabeçalho, romaneios; polling de 10 s                   |
@@ -208,6 +225,7 @@ util/  JwtDecoder · NetworkErrorHandler · Resource · TokenManager
 - Lock da carga (`SELECT ... FOR UPDATE`) antes de editar ou bipar. `cargo-lock.ts` exporta `lockCargoRow`; `scan.service` tem cópia inline (`lockCargo`).
 - Transações com timeout (30 s; scans 10 s). `rethrow`: `HttpException` não vira `error`; P2002 vira 409. `PATCH` aplica só o `diff` e loga só nomes de campos. `Logger` com `actor=`.
 - `buildDetail` monta a resposta da carga (totais por carga, romaneio e item).
+- **Helper de período compartilhado**: `resolveRange` (`summary-range.ts`) converte `from`/`to` em `{ gte, lte }` no fuso `America/Sao_Paulo` (offset fixo -03:00). Usado por `SummaryService` e `ReportsService`.
 
 ### Web
 

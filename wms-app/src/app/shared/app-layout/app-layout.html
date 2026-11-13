@@ -58,7 +58,7 @@
     </div>
     <!-- Nav (rolável na horizontal no mobile, só ícones) -->
     <nav
-      class="flex-1 min-w-0 flex items-center gap-1 h-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      class="flex-1 min-w-0 flex items-center gap-1 h-full overflow-x-auto overflow-y-hidden scrollbar-none [&::-webkit-scrollbar]:hidden"
     >
       @for (item of nav; track item.route) {
         <a
@@ -114,6 +114,23 @@
                 <path d="M10 10h4" />
                 <path d="M10 14h4" />
                 <path d="M10 18h4" />
+              </svg>
+            }
+            @case ('truck') {
+              <svg
+                class="w-4 h-4 shrink-0 opacity-80"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                <path d="M15 18H9" />
+                <path
+                  d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"
+                />
+                <circle cx="17" cy="18" r="2" />
+                <circle cx="7" cy="18" r="2" />
               </svg>
             }
             @case ('settings') {

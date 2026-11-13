@@ -12,6 +12,7 @@ import { Clients } from './features/clients/pages/clients';
 import { Settings } from './features/settings/pages/settings';
 import { NotFound } from './shared/offline/pages/not-found';
 import { OfflineComponent } from './shared/offline/pages/offline.component';
+import { Drivers } from './features/drivers/pages/drivers';
 
 export const routes: Routes = [
   { path: '', component: Login },
@@ -27,6 +28,7 @@ export const routes: Routes = [
       { path: 'cargas/:cargoId/entregas/:deliveryId', component: DeliveryDetail },
       { path: 'conferencia/:cargoId/:deliveryId', component: ScanDelivery },
       { path: 'clientes', component: Clients },
+      { path: 'motoristas', component: Drivers },
       { path: 'configuracoes', component: Settings },
     ],
   },

@@ -417,6 +417,29 @@ export class CargosService {
     return created.id;
   }
 
+  // Valida o motorista do cadastro e monta o snapshot. O texto enviado no payload
+  // (inclusive null) prevalece; só o que não veio (undefined) é copiado do cadastro.
+  private async resolveDriver(
+    tx: Prisma.TransactionClient,
+    driverId: number,
+    dto: { driverName?: string | null; driverPhone?: string | null },
+    actor: string,
+  ) {
+    const driver = await tx.driver.findUnique({ where: { id: driverId } });
+    if (!driver || !driver.active) {
+      this.logger.warn(
+        `Motorista inválido na carga (actor=${actor}, driverId=${driverId})`,
+      );
+      throw new NotFoundException('Motorista não encontrado ou inativo');
+    }
+    return {
+      driverId: driver.id,
+      driverName: dto.driverName !== undefined ? dto.driverName : driver.name,
+      driverPhone:
+        dto.driverPhone !== undefined ? dto.driverPhone : driver.phone,
+    };
+  }
+
   private async resolveClient(
     tx: Prisma.TransactionClient,
     dto: CargoDeliveryDto,
@@ -848,14 +871,21 @@ export class CargosService {
 
       const { cargoId, volumes } = await this.prisma.client.$transaction(
         async (tx) => {
+          const driver = dto.driverId
+            ? await this.resolveDriver(tx, dto.driverId, dto, actor)
+            : {
+                driverId: null,
+                driverName: dto.driverName ?? null,
+                driverPhone: dto.driverPhone ?? null,
+              };
+
           const cargo = await tx.cargo.create({
             data: {
               loadOrder: dto.loadOrder,
               totalDestinations: dto.deliveries.length,
               loadDate: dateOnly(dto.loadDate),
               issueDate: dateOnly(dto.issueDate),
-              driverName: dto.driverName ?? null,
-              driverPhone: dto.driverPhone ?? null,
+              ...driver,
               truck: dto.truck ?? null,
               inspectionResponsible: dto.inspectionResponsible ?? null,
               organizationResponsible: dto.organizationResponsible ?? null,
@@ -929,7 +959,14 @@ export class CargosService {
         }
       }
 
-      if (dto.deliveries === undefined && Object.keys(changes).length === 0) {
+      const driverChanged =
+        dto.driverId !== undefined && dto.driverId !== cargo.driverId;
+
+      if (
+        dto.deliveries === undefined &&
+        !driverChanged &&
+        Object.keys(changes).length === 0
+      ) {
         this.logger.warn(
           `Edição da carga sem alterações (actor=${actor}, id=${id})`,
         );
@@ -952,6 +989,15 @@ export class CargosService {
           throw new ConflictException(
             'Uma carga expedida não pode ser editada',
           );
+        }
+
+        if (driverChanged) {
+          const driver =
+            dto.driverId === null
+              ? { driverId: null }
+              : await this.resolveDriver(tx, dto.driverId!, dto, actor);
+          Object.assign(changes, changedFields(driver, cargo));
+          touched.add('motorista');
         }
 
         if (dto.deliveries !== undefined) {

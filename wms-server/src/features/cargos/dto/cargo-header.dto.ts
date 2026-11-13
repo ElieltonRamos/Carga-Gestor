@@ -1,9 +1,22 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { trimOrNull, ValidationMessages } from '../../../core/utils/validation';
 
 export class CargoHeaderDto {
+  @ApiPropertyOptional({
+    description:
+      'Id do motorista cadastrado. Quando enviado, nome e telefone são copiados do cadastro. `null` desvincula e mantém o texto atual',
+    example: 1,
+    nullable: true,
+    type: Number,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'O motorista deve ser um id válido' })
+  @Min(1, { message: 'O motorista deve ser um id válido' })
+  driverId?: number | null;
+
   @ApiPropertyOptional({
     description: 'Nome do motorista',
     example: 'João da Silva',

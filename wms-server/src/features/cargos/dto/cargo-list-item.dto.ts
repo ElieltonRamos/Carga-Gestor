@@ -20,6 +20,14 @@ export class CargoListItemDto {
   @ApiProperty({ example: '2026-10-14T00:00:00.000Z' })
   issueDate: Date;
 
+  @ApiProperty({
+    description: 'Motorista do cadastro vinculado, quando houver',
+    nullable: true,
+    type: Number,
+    example: 1,
+  })
+  driverId: number | null;
+
   @ApiProperty({ nullable: true, type: String })
   driverName: string | null;
 

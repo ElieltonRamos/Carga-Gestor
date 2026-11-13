@@ -61,17 +61,19 @@ model Company {
 }
 
 model User {
-  id             Int       @id @default(autoincrement())
+  id             Int            @id @default(autoincrement())
   name           String
-  username       String    @unique
-  passwordHash   String    @map("password_hash")
-  role           UserRole  @default(OPERATOR)
-  active         Boolean   @default(true)
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  username       String         @unique
+  passwordHash   String         @map("password_hash")
+  role           UserRole       @default(OPERATOR)
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
   scans          ScanLog[]
   departedCargos Cargo[]
   volumesLoaded  Volume[]
+  driverReviews  DriverReview[]
+  cargoReopens   CargoReopen[]
 
   @@map("users")
 }
@@ -91,35 +93,113 @@ model Client {
   @@map("clients")
 }
 
+// Cadastro de motoristas. Cargo mantém driverName/driverPhone como snapshot.
+model Driver {
+  id        Int            @id @default(autoincrement())
+  name      String
+  phone     String?
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  cargos    Cargo[]
+  reviews   DriverReview[]
+
+  @@index([name])
+  @@map("drivers")
+}
+
+// Avaliação manual de motorista (nota + comentário), opcionalmente ligada a uma carga.
+model DriverReview {
+  id        Int      @id @default(autoincrement())
+  driverId  Int      @map("driver_id")
+  cargoId   Int?     @map("cargo_id")
+  userId    Int      @map("user_id")
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  driver    Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  cargo     Cargo?   @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([driverId])
+  @@index([cargoId])
+  @@index([userId])
+  @@map("driver_reviews")
+}
+
+// Histórico de reaberturas de carga (motivo obrigatório em POST /cargos/:id/reopen).
+model CargoReopen {
+  id        Int      @id @default(autoincrement())
+  cargoId   Int      @map("cargo_id")
+  userId    Int      @map("user_id")
+  reason    String   @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  cargo     Cargo    @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([cargoId])
+  @@index([userId])
+  @@map("cargo_reopens")
+}
+
+// Cadastro de produtos. DeliveryItem mantém code/product/weight/volumeCount como snapshot.
+model Product {
+  id          Int            @id @default(autoincrement())
+  code        String         @unique
+  name        String
+  weight      Decimal?       @db.Decimal(10, 3)
+  volumeCount Int?           @map("volume_count")
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  items       DeliveryItem[]
+
+  @@index([name])
+  @@map("products")
+}
+
+// Contadores para numeração automática (ex.: key "romaneio:2026").
+model NumberSequence {
+  key   String @id
+  value Int    @default(0)
+
+  @@map("number_sequences")
+}
+
 model Cargo {
-  id                      Int         @id @default(autoincrement())
-  loadOrder               String      @unique @map("load_order")
-  totalDestinations       Int         @map("total_destinations")
-  status                  CargoStatus @default(OPEN)
-  loadDate                DateTime    @map("load_date") @db.Date
-  issueDate               DateTime    @map("issue_date") @db.Date
-  driverName              String?     @map("driver_name")
-  driverPhone             String?     @map("driver_phone")
+  id                      Int            @id @default(autoincrement())
+  loadOrder               String         @unique @map("load_order")
+  totalDestinations       Int            @map("total_destinations")
+  status                  CargoStatus    @default(OPEN)
+  loadDate                DateTime       @map("load_date") @db.Date
+  issueDate               DateTime       @map("issue_date") @db.Date
+  driverId                Int?           @map("driver_id")
+  driverName              String?        @map("driver_name")
+  driverPhone             String?        @map("driver_phone")
   truck                   String?
-  inspectionResponsible   String?     @map("inspection_responsible")
-  organizationResponsible String?     @map("organization_responsible")
-  assistant1              String?     @map("assistant_1")
-  loadingResponsible      String?     @map("loading_responsible")
-  warehouseKeeper         String?     @map("warehouse_keeper")
-  romaneioResponsible     String?     @map("romaneio_responsible")
-  startedAt               DateTime?   @map("started_at")
-  endedAt                 DateTime?   @map("ended_at")
-  departedAt              DateTime?   @map("departed_at")
-  createdAt               DateTime    @default(now()) @map("created_at")
-  updatedAt               DateTime    @updatedAt @map("updated_at")
-  departedById            Int?        @map("departed_by_id")
-  pendingAtDeparture      Int?        @map("pending_at_departure")
-  departedBy              User?       @relation(fields: [departedById], references: [id])
+  inspectionResponsible   String?        @map("inspection_responsible")
+  organizationResponsible String?        @map("organization_responsible")
+  assistant1              String?        @map("assistant_1")
+  loadingResponsible      String?        @map("loading_responsible")
+  warehouseKeeper         String?        @map("warehouse_keeper")
+  romaneioResponsible     String?        @map("romaneio_responsible")
+  startedAt               DateTime?      @map("started_at")
+  endedAt                 DateTime?      @map("ended_at")
+  departedAt              DateTime?      @map("departed_at")
+  createdAt               DateTime       @default(now()) @map("created_at")
+  updatedAt               DateTime       @updatedAt @map("updated_at")
+  departedById            Int?           @map("departed_by_id")
+  pendingAtDeparture      Int?           @map("pending_at_departure")
+  departedBy              User?          @relation(fields: [departedById], references: [id])
+  driver                  Driver?        @relation(fields: [driverId], references: [id], onDelete: SetNull)
   deliveries              Delivery[]
   scans                   ScanLog[]
+  driverReviews           DriverReview[]
+  reopens                 CargoReopen[]
 
   @@index([createdAt])
   @@index([status, createdAt])
+  @@index([driverId])
   @@map("cargos")
 }
 
@@ -151,18 +231,21 @@ model Delivery {
 }
 
 model DeliveryItem {
-  id          Int      @id @default(autoincrement())
-  deliveryId  Int      @map("delivery_id")
-  code        String?
-  product     String
-  quantity    Int
-  volumeCount Int?     @map("volume_count")
-  weight      Decimal? @db.Decimal(10, 3)
-  notes       String?  @db.Text
-  delivery    Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-  volumes     Volume[]
+  id             Int      @id @default(autoincrement())
+  deliveryId     Int      @map("delivery_id")
+  productId      Int?     @map("product_id")
+  code           String?
+  product        String
+  quantity       Int
+  volumeCount    Int?     @map("volume_count")
+  weight         Decimal? @db.Decimal(10, 3)
+  notes          String?  @db.Text
+  delivery       Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  catalogProduct Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  volumes        Volume[]
 
   @@index([deliveryId])
+  @@index([productId])
   @@map("delivery_items")
 }
 

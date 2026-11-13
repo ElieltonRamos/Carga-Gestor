@@ -116,19 +116,18 @@ export class CargoDeliveryDto {
   @Min(1, { message: ValidationMessages.MIN('O id do romaneio', 1) })
   id?: number;
 
-  @ApiProperty({
-    description: 'Número do romaneio (único)',
+  @ApiPropertyOptional({
+    description:
+      'Número do romaneio (único). Na criação do romaneio: obrigatório se não informado, será gerado automaticamente. Na edição de romaneio existente: opcional; se não vier, mantém o número atual.',
     example: '2026-0001',
   })
+  @IsOptional()
   @Transform(trim)
   @IsString({ message: ValidationMessages.IS_STRING('O número do romaneio') })
-  @IsNotEmpty({
-    message: ValidationMessages.IS_NOT_EMPTY('O número do romaneio'),
-  })
   @MaxLength(191, {
     message: ValidationMessages.MAX_LENGTH('O número do romaneio', 191),
   })
-  romaneioNumber: string;
+  romaneioNumber?: string;
 
   @ApiPropertyOptional({
     description: 'Número da licitação',

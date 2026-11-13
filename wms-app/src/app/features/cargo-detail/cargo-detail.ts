@@ -107,7 +107,6 @@ export class CargoDetail {
   ] as const;
 
   deliveryForm = this.fb.group({
-    romaneioNumber: ['', Validators.required],
     biddingNumber: [''],
     modality: [''],
     hasInstallation: [false],
@@ -299,7 +298,6 @@ export class CargoDetail {
   private buildNewDelivery(): CargoDeliveryDto {
     const value = this.deliveryForm.getRawValue();
     return {
-      romaneioNumber: value.romaneioNumber!,
       biddingNumber: value.biddingNumber || undefined,
       modality: value.modality || undefined,
       hasInstallation: value.hasInstallation ?? false,
@@ -343,7 +341,6 @@ export class CargoDetail {
     items.push(this.createItemGroup());
 
     this.deliveryForm.patchValue({
-      romaneioNumber: '',
       biddingNumber: '',
       modality: '',
       hasInstallation: false,

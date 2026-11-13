@@ -11,7 +11,7 @@ type CargoConfig = Omit<CreateCargoDto, 'deliveries'> & { totalDestinations: num
 
 interface SummaryRow {
   key: string | number;
-  romaneioNumber: string;
+  romaneioNumber?: string;
   clientName: string;
   clientCity: string;
   itemsCount: number;
@@ -60,7 +60,6 @@ export class CargoRegistration {
   });
 
   deliveryForm = this.fb.group({
-    romaneioNumber: ['', Validators.required],
     biddingNumber: [''],
     modality: [''],
     hasInstallation: [false],
@@ -107,7 +106,7 @@ export class CargoRegistration {
     }
     return this.drafts().map((d, i) => ({
       key: `draft-${i}`,
-      romaneioNumber: d.romaneioNumber,
+      romaneioNumber: undefined,
       clientName: d.client?.name ?? '',
       clientCity: d.client?.city ?? '',
       itemsCount: d.items.length,
@@ -248,7 +247,6 @@ export class CargoRegistration {
   private buildDelivery(): CargoDeliveryDto {
     const value = this.deliveryForm.getRawValue();
     return {
-      romaneioNumber: value.romaneioNumber!,
       biddingNumber: value.biddingNumber || undefined,
       modality: value.modality || undefined,
       hasInstallation: value.hasInstallation ?? false,
@@ -301,7 +299,6 @@ export class CargoRegistration {
     items.push(this.createItemGroup());
 
     this.deliveryForm.patchValue({
-      romaneioNumber: '',
       biddingNumber: '',
       modality: '',
       hasInstallation: false,

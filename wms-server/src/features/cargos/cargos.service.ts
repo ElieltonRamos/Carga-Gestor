@@ -106,8 +106,9 @@ const toSnapshot = (c: ClientData) => ({
 });
 
 // Campos do romaneio e do item, sem o snapshot do cliente e as observações
+// Inclui romaneioNumber apenas quando vier preenchido (não undefined, não string vazia)
 const deliveryFields = (d: CargoDeliveryDto) => ({
-  romaneioNumber: d.romaneioNumber,
+  ...(d.romaneioNumber ? { romaneioNumber: d.romaneioNumber } : {}),
   biddingNumber: d.biddingNumber ?? null,
   modality: d.modality ?? null,
   hasInstallation: d.hasInstallation ?? false,
@@ -305,11 +306,15 @@ export class CargosService {
   }
 
   // romaneioNumber é único no sistema. Na edição, ignora os romaneios da própria carga
+  // Aceita números ausentes (undefined) e valida apenas os informados.
   private async assertRomaneiosAvailable(
-    numbers: string[],
+    input: (string | undefined)[],
     actor: string,
     cargoId?: number,
   ): Promise<void> {
+    const numbers = input.filter((n): n is string => !!n);
+    if (numbers.length === 0) return;
+
     if (new Set(numbers).size !== numbers.length) {
       this.logger.warn(`Romaneios repetidos no payload (actor=${actor})`);
       throw new BadRequestException(
@@ -349,6 +354,34 @@ export class CargosService {
       });
     }
     return rows;
+  }
+
+  // Método novo: incrementa a linha de NumberSequence da chave romaneio:AAAA
+  // dentro da transação e devolve AAAA-NNNN. Se o número já existir em Delivery
+  // (digitado à mão antes), pula para o próximo.
+  private async nextRomaneioNumber(
+    tx: Prisma.TransactionClient,
+  ): Promise<string> {
+    const year = todayInSaoPaulo().slice(0, 4);
+    const key = `romaneio:${year}`;
+
+    await tx.numberSequence.createMany({
+      data: [{ key, value: 0 }],
+      skipDuplicates: true,
+    });
+
+    while (true) {
+      const { value } = await tx.numberSequence.update({
+        where: { key },
+        data: { value: { increment: 1 } },
+      });
+      const candidate = `${year}-${String(value).padStart(4, '0')}`;
+      const taken = await tx.delivery.findUnique({
+        where: { romaneioNumber: candidate },
+        select: { id: true },
+      });
+      if (!taken) return candidate;
+    }
   }
 
   // Reaproveita o Client pelo documento ou cria um novo. Nunca atualiza um Client existente.
@@ -448,6 +481,8 @@ export class CargosService {
         sequence,
         clientId,
         ...deliveryFields(dto),
+        romaneioNumber:
+          dto.romaneioNumber || (await this.nextRomaneioNumber(tx)),
         ...snapshot,
       },
     });

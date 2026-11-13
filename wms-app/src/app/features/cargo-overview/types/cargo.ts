@@ -117,7 +117,7 @@ export interface CargoItemDto {
 
 export interface CargoDeliveryDto {
   id?: number;
-  romaneioNumber: string;
+  romaneioNumber?: string;
   biddingNumber?: string | null;
   modality?: string | null;
   hasInstallation?: boolean;

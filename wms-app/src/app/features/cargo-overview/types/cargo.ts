@@ -28,6 +28,13 @@ export interface CargoListItem {
   pendingAtDeparture: number | null;
 }
 
+export interface CargoItemLoader {
+  userId: number;
+  name: string;
+  count: number;
+  lastLoadedAt: string | null;
+}
+
 export interface CargoItem {
   id: number;
   deliveryId: number;
@@ -39,6 +46,7 @@ export interface CargoItem {
   notes: string | null;
   totalVolumes?: number;
   loadedVolumes?: number;
+  loaders?: CargoItemLoader[];
 }
 
 export interface CargoDelivery {

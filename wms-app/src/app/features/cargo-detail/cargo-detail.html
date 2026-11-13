@@ -597,14 +597,28 @@
                       </h3>
                       @for (entry of row.loadedItems; track entry.item.id) {
                         <div
-                          class="bg-bg-card border border-border rounded p-2 flex justify-between gap-3 text-sm"
+                          class="bg-bg-card border border-border rounded p-2 flex flex-col gap-1 text-sm"
                         >
-                          <span class="min-w-0 break-words text-text-primary">
-                            {{ entry.item.product }}
-                          </span>
-                          <span class="shrink-0 font-bold text-success">
-                            {{ entry.progress.loaded }}/{{ entry.progress.total }}
-                          </span>
+                          <div class="flex justify-between gap-3">
+                            <span class="min-w-0 wrap-break-word text-text-primary">
+                              {{ entry.item.product }}
+                            </span>
+                            <span class="shrink-0 font-bold text-success">
+                              {{ entry.progress.loaded }}/{{ entry.progress.total }}
+                            </span>
+                          </div>
+                          @for (loader of entry.item.loaders ?? []; track loader.userId) {
+                            <p class="flex justify-between gap-3 text-xs text-text-secondary">
+                              <span class="min-w-0 wrap-break-word"
+                                >{{ loader.name }} · {{ loader.count }} vol.</span
+                              >
+                              @if (loader.lastLoadedAt) {
+                                <span class="shrink-0">{{
+                                  loader.lastLoadedAt | date: 'dd/MM HH:mm'
+                                }}</span>
+                              }
+                            </p>
+                          }
                         </div>
                       } @empty {
                         <p class="text-xs text-text-muted">Nenhum item carregado ainda.</p>
@@ -619,7 +633,7 @@
                         <div
                           class="bg-bg-card border border-border rounded p-2 flex justify-between gap-3 text-sm"
                         >
-                          <span class="min-w-0 break-words text-text-primary">
+                          <span class="min-w-0 wrap-break-word text-text-primary">
                             {{ entry.item.product }}
                           </span>
                           <span class="shrink-0 font-bold text-warning">

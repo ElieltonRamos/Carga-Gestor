@@ -33,6 +33,15 @@ const HEADER_FIELDS = [
 ] as const;
 
 type VolumeCounts = { totalVolumes: number; loadedVolumes: number };
+
+// ── 1) Junto dos tipos, perto de `type VolumeCounts` ────────────────────────
+type LoaderInfo = {
+  userId: number;
+  name: string;
+  count: number;
+  lastLoadedAt: Date | null;
+};
+
 const TX_OPTIONS = { timeout: 30_000 };
 const EMPTY_COUNTS: VolumeCounts = { totalVolumes: 0, loadedVolumes: 0 };
 
@@ -198,10 +207,51 @@ export class CargosService {
     return byItem;
   }
 
+  // ── 2) Método novo, logo abaixo de `countVolumesByItem` ─────────────────────
+  // Quem carregou cada item: volumes carregados agrupados por operador
+  private async loadersByItem(cargoId: number) {
+    const groups = await this.prisma.client.volume.groupBy({
+      by: ['deliveryItemId', 'loadedById'],
+      where: {
+        loaded: true,
+        loadedById: { not: null },
+        deliveryItem: { delivery: { cargoId } },
+      },
+      _count: { _all: true },
+      _max: { loadedAt: true },
+    });
+
+    const byItem = new Map<number, LoaderInfo[]>();
+    if (groups.length === 0) return byItem;
+
+    const userIds = [...new Set(groups.map((g) => g.loadedById!))];
+    const users = await this.prisma.client.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true },
+    });
+    const names = new Map(users.map((u) => [u.id, u.name]));
+
+    for (const g of groups) {
+      const list = byItem.get(g.deliveryItemId) ?? [];
+      list.push({
+        userId: g.loadedById!,
+        name: names.get(g.loadedById!) ?? '—',
+        count: g._count._all,
+        lastLoadedAt: g._max.loadedAt,
+      });
+      byItem.set(g.deliveryItemId, list);
+    }
+    return byItem;
+  }
+
+  // ── 3) Substitui o `buildDetail` inteiro ─────────────────────────────────────
   private async buildDetail(
     cargo: CargoWithRelations,
   ): Promise<CargoResponseDto> {
-    const byItem = await this.countVolumesByItem(cargo.id);
+    const [byItem, loaders] = await Promise.all([
+      this.countVolumesByItem(cargo.id),
+      this.loadersByItem(cargo.id),
+    ]);
     const { deliveries, ...header } = cargo;
 
     const total: VolumeCounts = { ...EMPTY_COUNTS };
@@ -217,6 +267,7 @@ export class CargosService {
           ...item,
           weight: item.weight === null ? null : item.weight.toNumber(),
           ...counts,
+          loaders: loaders.get(item.id) ?? [],
         };
       });
 

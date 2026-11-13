@@ -2,6 +2,28 @@ import { ApiProperty } from '@nestjs/swagger';
 import { DeliveryStatus } from '../../../../generated/prisma/client.js';
 import { CargoListItemDto } from './cargo-list-item.dto.js';
 
+export class CargoItemLoaderDto {
+  @ApiProperty({ example: 2 })
+  userId: number;
+
+  @ApiProperty({ example: 'João' })
+  name: string;
+
+  @ApiProperty({
+    description: 'Volumes do item carregados por este usuário',
+    example: 3,
+  })
+  count: number;
+
+  @ApiProperty({
+    description: 'Horário da última bipagem deste usuário no item',
+    nullable: true,
+    type: Date,
+    example: '2026-11-12T14:32:10.000Z',
+  })
+  lastLoadedAt: Date | null;
+}
+
 export class CargoItemResponseDto {
   @ApiProperty({ example: 87 })
   id: number;
@@ -32,6 +54,13 @@ export class CargoItemResponseDto {
 
   @ApiProperty({ description: 'Volumes já carregados', example: 1 })
   loadedVolumes: number;
+
+  @ApiProperty({
+    description:
+      'Quem carregou os volumes do item (vazio se nenhum foi carregado)',
+    type: [CargoItemLoaderDto],
+  })
+  loaders: CargoItemLoaderDto[];
 }
 
 export class CargoDeliveryResponseDto {

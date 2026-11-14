@@ -14,16 +14,27 @@
       autocomplete="off"
     />
 
-    <!-- Clear button when driver is selected -->
-    @if (selectedDriver() && !disabled) {
+    <!-- Clear button when there's search term (not while loading) -->
+    @if (searchTerm() && !isLoading() && !disabled) {
       <button
         type="button"
         (click)="clearSelection()"
         class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
         aria-label="Limpar seleção"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
     }
@@ -32,8 +43,20 @@
     @if (isLoading()) {
       <div class="absolute right-3 top-1/2 -translate-y-1/2">
         <svg class="animate-spin h-5 w-5 text-text-muted" viewBox="0 0 24 24" aria-hidden="true">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+            fill="none"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
         </svg>
       </div>
     }
@@ -41,7 +64,9 @@
 
   <!-- Dropdown options -->
   @if (isOpen() && !isLoading() && !disabled) {
-    <div class="absolute z-50 w-full mt-1 bg-bg-card border border-border rounded-card shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+    <div
+      class="absolute z-50 w-full mt-1 bg-bg-card border border-border rounded-card shadow-lg overflow-hidden max-h-60 overflow-y-auto"
+    >
       @if (options().length > 0) {
         @for (driver of options(); track driver.id) {
           <button
@@ -56,8 +81,17 @@
               }
             </div>
             @if (driver.id === driverId) {
-              <svg class="w-5 h-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              <svg
+                class="w-5 h-5 text-primary shrink-0"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd"
+                />
               </svg>
             }
           </button>
@@ -73,9 +107,4 @@
       }
     </div>
   }
-
-  <!-- Hidden inputs for form submission (driverId, driverName, driverPhone) -->
-  <input type="hidden" [name]="'driverId'" [value]="driverId" />
-  <input type="hidden" [name]="'driverName'" [value]="driverName" />
-  <input type="hidden" [name]="'driverPhone'" [value]="driverPhone ?? ''" />
 </div>

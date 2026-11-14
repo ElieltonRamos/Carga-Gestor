@@ -404,11 +404,7 @@ export class CargoDetail {
   }
 
   onDriverNameChanged(name: string): void {
-    this.editForm.controls.driverName.setValue(name);
-  }
-
-  onDriverPhoneChanged(phone: string | null): void {
-    this.editForm.controls.driverPhone.setValue(phone ?? '');
+    this.editForm.patchValue({ driverId: null, driverName: name });
   }
 
   cancelEdit(): void {

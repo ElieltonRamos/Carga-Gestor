@@ -1,4 +1,5 @@
 # WMS – Gestão de Carregamento (CargaGestor)
+Configuracao do primeiro cliente = https://sigmetal-gestor-carga.gruposae.com.br/api
 
 Sistema de expedição e conferência de carregamentos em depósito. Uma **carga** agrupa **romaneios** (entregas por cliente); cada romaneio tem **itens**, e cada item gera **volumes** com código único. O operador bipa cada volume antes da expedição.
 

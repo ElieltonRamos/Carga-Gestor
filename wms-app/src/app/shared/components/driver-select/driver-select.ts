@@ -1,7 +1,24 @@
-import { Component, EventEmitter, inject, Input, Output, signal, OnDestroy, effect } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  inject,
+  Input,
+  Output,
+  signal,
+  OnDestroy,
+  effect,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, of, catchError } from 'rxjs';
+import {
+  Subject,
+  debounceTime,
+  distinctUntilChanged,
+  takeUntil,
+  switchMap,
+  of,
+  catchError,
+} from 'rxjs';
 import { DriversService } from '../../../features/drivers/services/drivers.service';
 import { Driver } from '../../../features/drivers/types/driver';
 
@@ -20,13 +37,11 @@ export class DriverSelect implements OnDestroy {
 
   @Input() driverId: number | null = null;
   @Input() driverName: string = '';
-  @Input() driverPhone: string | null = null;
   @Input() placeholder = 'Buscar motorista...';
   @Input() disabled = false;
 
   @Output() driverSelected = new EventEmitter<Driver | null>();
   @Output() nameChanged = new EventEmitter<string>();
-  @Output() phoneChanged = new EventEmitter<string | null>();
 
   protected readonly searchTerm = signal('');
   protected readonly options = signal<Driver[]>([]);
@@ -49,28 +64,30 @@ export class DriverSelect implements OnDestroy {
       }
     });
 
-    this.searchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap((term) => {
-        if (!term.trim()) {
-          this.options.set([]);
-          return of({ data: [], total: 0, page: 1, limit: 10, totalPages: 0 });
-        }
-        this.isLoading.set(true);
-        this.error.set(null);
-        return this.driversService.findAll({ page: 1, limit: 10, search: term }).pipe(
-          catchError(() => {
-            this.error.set('Erro ao buscar motoristas');
+    this.searchSubject
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((term) => {
+          if (!term.trim()) {
+            this.options.set([]);
             return of({ data: [], total: 0, page: 1, limit: 10, totalPages: 0 });
-          }),
-        );
-      }),
-      takeUntil(this.destroy$),
-    ).subscribe((result) => {
-      this.options.set(result.data);
-      this.isLoading.set(false);
-    });
+          }
+          this.isLoading.set(true);
+          this.error.set(null);
+          return this.driversService.findAll({ page: 1, limit: 10, search: term }).pipe(
+            catchError(() => {
+              this.error.set('Erro ao buscar motoristas');
+              return of({ data: [], total: 0, page: 1, limit: 10, totalPages: 0 });
+            }),
+          );
+        }),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((result) => {
+        this.options.set(result.data);
+        this.isLoading.set(false);
+      });
   }
 
   ngOnDestroy(): void {
@@ -83,6 +100,12 @@ export class DriverSelect implements OnDestroy {
     this.searchTerm.set(value);
     this.searchSubject.next(value);
     this.isOpen.set(true);
+
+    // Digitar desvincula o motorista escolhido; o backend vincula ou cria pelo nome
+    this.selectedDriver.set(null);
+    this.driverId = null;
+    this.driverName = value;
+    this.nameChanged.emit(value);
   }
 
   protected onFocus(): void {
@@ -101,29 +124,10 @@ export class DriverSelect implements OnDestroy {
     this.searchTerm.set(driver.name);
     this.driverId = driver.id;
     this.driverName = driver.name;
-    this.driverPhone = driver.phone;
     this.options.set([]);
     this.isOpen.set(false);
+    // O pai preenche id, nome e telefone a partir do driverSelected
     this.driverSelected.emit(driver);
-    this.nameChanged.emit(driver.name);
-    this.phoneChanged.emit(driver.phone);
-  }
-
-  protected onNameInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    // If user manually edits the name, clear driverId so backend uses name matching
-    if (this.selectedDriver() && value !== this.selectedDriver()!.name) {
-      this.selectedDriver.set(null);
-      this.driverId = null;
-    }
-    this.driverName = value;
-    this.nameChanged.emit(value);
-  }
-
-  protected onPhoneInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.driverPhone = value || null;
-    this.phoneChanged.emit(this.driverPhone);
   }
 
   protected clearSelection(): void {
@@ -131,9 +135,7 @@ export class DriverSelect implements OnDestroy {
     this.searchTerm.set('');
     this.driverId = null;
     this.driverName = '';
-    this.driverPhone = null;
+    this.options.set([]);
     this.driverSelected.emit(null);
-    this.nameChanged.emit('');
-    this.phoneChanged.emit(null);
   }
 }

@@ -73,18 +73,27 @@
         <h2 class="text-lg font-semibold text-text-primary">Dados da Carga</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-2 md:col-span-2">
+          <div class="flex flex-col gap-2">
             <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"
               >Motorista</label
             >
             <app-driver-select
               [driverId]="cargoConfigForm.controls.driverId.value ?? null"
               [driverName]="cargoConfigForm.controls.driverName.value ?? ''"
-              [driverPhone]="cargoConfigForm.controls.driverPhone.value ?? null"
               (driverSelected)="onDriverSelected($event)"
               (nameChanged)="onDriverNameChanged($event)"
-              (phoneChanged)="onDriverPhoneChanged($event)"
               placeholder="Buscar motorista cadastrado ou digitar nome novo..."
+            />
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Telefone motorista
+            </label>
+            <input
+              type="text"
+              formControlName="driverPhone"
+              class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
             />
           </div>
 

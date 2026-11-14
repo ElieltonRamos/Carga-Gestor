@@ -142,8 +142,8 @@ export class CargoRegistration {
       loadDate: value.loadDate!,
       issueDate: value.issueDate!,
       driverId: value.driverId ?? null,
-      driverName: value.driverName || undefined,
-      driverPhone: value.driverPhone || undefined,
+      driverName: value.driverName?.trim() || null,
+      driverPhone: value.driverPhone?.trim() || null,
       truck: value.truck || undefined,
       inspectionResponsible: value.inspectionResponsible || undefined,
       organizationResponsible: value.organizationResponsible || undefined,
@@ -168,11 +168,7 @@ export class CargoRegistration {
   }
 
   onDriverNameChanged(name: string): void {
-    this.cargoConfigForm.controls.driverName.setValue(name);
-  }
-
-  onDriverPhoneChanged(phone: string | null): void {
-    this.cargoConfigForm.controls.driverPhone.setValue(phone ?? '');
+    this.cargoConfigForm.patchValue({ driverId: null, driverName: name });
   }
 
   backToConfig(): void {

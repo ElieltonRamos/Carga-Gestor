@@ -8,7 +8,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service.js';
-import { CargoStatus, Prisma } from '../../../generated/prisma/client.js';
+import {
+  CargoStatus,
+  Prisma,
+  Product,
+} from '../../../generated/prisma/client.js';
 import { CreateCargoDto } from './dto/create-cargo.dto.js';
 import { UpdateCargoDto } from './dto/update-cargo.dto.js';
 import { ListCargosQueryDto } from './dto/list-cargos-query.dto';
@@ -115,7 +119,6 @@ const deliveryFields = (d: CargoDeliveryDto) => ({
 });
 
 const itemFields = (i: CargoItemDto) => ({
-  code: i.code ?? null,
   product: i.product,
   quantity: i.quantity,
   volumeCount: i.volumeCount ?? null,
@@ -522,16 +525,133 @@ export class CargosService {
     };
   }
 
+  // Produto ativo do cadastro
+  private async findActiveProduct(
+    tx: Prisma.TransactionClient,
+    id: number,
+    actor: string,
+  ): Promise<Product> {
+    const product = await tx.product.findUnique({ where: { id } });
+    if (!product || !product.active) {
+      this.logger.warn(
+        `Produto inválido no item (actor=${actor}, productId=${id})`,
+      );
+      throw new NotFoundException('Produto não encontrado ou inativo');
+    }
+    return product;
+  }
+
+  // Produto ativo com o mesmo nome, sem diferenciar maiúsculas/minúsculas
+  private async findProductByName(
+    tx: Prisma.TransactionClient,
+    name: string,
+  ): Promise<Product | null> {
+    const rows = await tx.$queryRaw<{ id: number }[]>`
+      SELECT id FROM products
+      WHERE active = 1 AND LOWER(name) = LOWER(${name})
+      ORDER BY id ASC
+      LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    return tx.product.findUnique({ where: { id: Number(rows[0].id) } });
+  }
+
+  // Cria o produto a partir do item: peso do item e volumes por unidade
+  // (volumes ÷ quantidade, só quando a divisão é exata)
+  private async createProductFromItem(
+    tx: Prisma.TransactionClient,
+    dto: CargoItemDto,
+    actor: string,
+  ): Promise<Product> {
+    const perUnit =
+      dto.volumeCount != null &&
+      dto.quantity > 0 &&
+      dto.volumeCount % dto.quantity === 0
+        ? dto.volumeCount / dto.quantity
+        : null;
+
+    const created = await tx.product.create({
+      data: {
+        name: dto.product,
+        weight: dto.weight ?? null,
+        volumeCount: perUnit,
+      },
+    });
+    this.logger.log(
+      `Produto criado a partir do item (actor=${actor}, id=${created.id})`,
+    );
+    return created;
+  }
+
+  // Com productId usa o cadastro; sem, reaproveita pelo nome ou cria.
+  // O texto enviado prevalece; só o que veio undefined é preenchido do cadastro.
+  private async resolveItemProduct(
+    tx: Prisma.TransactionClient,
+    dto: CargoItemDto,
+    actor: string,
+  ) {
+    const product = dto.productId
+      ? await this.findActiveProduct(tx, dto.productId, actor)
+      : ((await this.findProductByName(tx, dto.product)) ??
+        (await this.createProductFromItem(tx, dto, actor)));
+
+    return {
+      productId: product.id,
+      code: String(product.id),
+      weight:
+        dto.weight !== undefined
+          ? dto.weight
+          : product.weight === null
+            ? null
+            : product.weight.toNumber(),
+      volumeCount:
+        dto.volumeCount !== undefined
+          ? dto.volumeCount
+          : product.volumeCount === null
+            ? null
+            : product.volumeCount * dto.quantity,
+    };
+  }
+
+  // Na edição só revincula quando o produto mudou: productId diferente, ou nome
+  // novo sem productId. Itens antigos com o mesmo nome não são tocados.
+  private async relinkItemProduct(
+    tx: Prisma.TransactionClient,
+    item: CargoItemDto,
+    current: { productId: number | null; product: string },
+    actor: string,
+  ): Promise<Record<string, unknown>> {
+    if (typeof item.productId === 'number') {
+      return item.productId === current.productId
+        ? {}
+        : this.resolveItemProduct(tx, item, actor);
+    }
+    if (item.product !== current.product) {
+      return this.resolveItemProduct(tx, item, actor);
+    }
+    if (item.productId === null && current.productId !== null) {
+      return { productId: null };
+    }
+    return {};
+  }
+
   private async createItem(
     tx: Prisma.TransactionClient,
     cargoId: number,
     delivery: { id: number; sequence: number },
     dto: CargoItemDto,
+    actor: string,
   ): Promise<Prisma.VolumeCreateManyInput[]> {
+    const resolved = await this.resolveItemProduct(tx, dto, actor);
     const item = await tx.deliveryItem.create({
       data: {
         deliveryId: delivery.id,
-        ...itemFields(dto),
+        productId: resolved.productId,
+        code: resolved.code,
+        product: dto.product,
+        quantity: dto.quantity,
+        volumeCount: resolved.volumeCount,
+        weight: resolved.weight,
         notes: dto.notes ?? null,
       },
     });
@@ -567,7 +687,9 @@ export class CargosService {
 
     const volumes: Prisma.VolumeCreateManyInput[] = [];
     for (const item of dto.items) {
-      volumes.push(...(await this.createItem(tx, cargoId, delivery, item)));
+      volumes.push(
+        ...(await this.createItem(tx, cargoId, delivery, item, actor)),
+      );
     }
     return volumes;
   }
@@ -746,14 +868,20 @@ export class CargosService {
     const keptItemIds = new Set<number>();
     for (const item of input.items) {
       if (item.id === undefined) {
-        newVolumes.push(...(await this.createItem(tx, cargoId, current, item)));
+        newVolumes.push(
+          ...(await this.createItem(tx, cargoId, current, item, actor)),
+        );
         touched.add('itens');
         continue;
       }
       keptItemIds.add(item.id);
       const currentItem = current.items.find((i) => i.id === item.id)!;
 
-      const itemChanges = changedFields(itemFields(item), currentItem);
+      const relink = await this.relinkItemProduct(tx, item, currentItem, actor);
+      const itemChanges = changedFields(
+        { ...itemFields(item), ...relink },
+        currentItem,
+      );
       if (norm(item.notes) !== norm(currentItem.notes)) {
         itemChanges.notes = item.notes ?? null;
       }
@@ -766,7 +894,11 @@ export class CargosService {
       }
 
       const oldTotal = currentItem.volumeCount ?? 1;
-      const newTotal = item.volumeCount ?? 1;
+      const nextVolumeCount =
+        'volumeCount' in itemChanges
+          ? (itemChanges.volumeCount as number | null)
+          : currentItem.volumeCount;
+      const newTotal = nextVolumeCount ?? 1;
       if (newTotal > oldTotal) {
         newVolumes.push(
           ...this.buildVolumes(

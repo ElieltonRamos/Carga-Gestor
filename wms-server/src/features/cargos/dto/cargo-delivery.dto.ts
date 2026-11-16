@@ -47,6 +47,19 @@ export class CargoItemDto {
   @MaxLength(191, { message: ValidationMessages.MAX_LENGTH('O código', 191) })
   code?: string | null;
 
+  @ApiPropertyOptional({
+    description:
+      'Id do produto cadastrado. Peso e volumes não enviados são preenchidos do cadastro. O código do item é sempre o id do produto',
+    example: 1,
+    nullable: true,
+    type: Number,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'O produto deve ser um id válido' })
+  @Min(1, { message: 'O produto deve ser um id válido' })
+  productId?: number | null;
+
   @ApiProperty({ description: 'Produto', example: 'Mesa escolar' })
   @Transform(trim)
   @IsString({ message: ValidationMessages.IS_STRING('O produto') })

@@ -56,6 +56,14 @@ export class CargoItemResponseDto {
   loadedVolumes: number;
 
   @ApiProperty({
+    description: 'Produto do cadastro vinculado, quando houver',
+    nullable: true,
+    type: Number,
+    example: 1,
+  })
+  productId: number | null;
+
+  @ApiProperty({
     description:
       'Quem carregou os volumes do item (vazio se nenhum foi carregado)',
     type: [CargoItemLoaderDto],

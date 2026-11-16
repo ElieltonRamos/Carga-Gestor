@@ -7,7 +7,7 @@ import { Location } from '@angular/common';
 interface NavItem {
   label: string;
   route: string;
-  icon: 'grid' | 'package' | 'building' | 'truck' | 'settings';
+  icon: 'grid' | 'package' | 'building' | 'truck' | 'tag' | 'settings';
 }
 
 @Component({
@@ -27,6 +27,7 @@ export class AppLayout {
     { label: 'Cargas', route: '/cargas', icon: 'package' },
     { label: 'Clientes', route: '/clientes', icon: 'building' },
     { label: 'Motoristas', route: '/motoristas', icon: 'truck' },
+    { label: 'Produtos', route: '/produtos', icon: 'tag' },
     { label: 'Configurações', route: '/configuracoes', icon: 'settings' },
   ];
 

@@ -15,6 +15,7 @@ import { ScanModule } from './features/scan/scan.module';
 import { SummaryModule } from './features/summary/summary.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DriversModule } from './features/drivers/drivers.module';
+import { ProductsModule } from './features/products/products.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { DriversModule } from './features/drivers/drivers.module';
     ScanModule,
     SummaryModule,
     DriversModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

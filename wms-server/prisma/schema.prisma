@@ -145,7 +145,6 @@ model CargoReopen {
 // Cadastro de produtos. DeliveryItem mantém code/product/weight/volumeCount como snapshot.
 model Product {
   id          Int            @id @default(autoincrement())
-  code        String         @unique
   name        String
   weight      Decimal?       @db.Decimal(10, 3)
   volumeCount Int?           @map("volume_count")

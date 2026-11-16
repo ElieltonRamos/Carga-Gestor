@@ -262,6 +262,99 @@
       </div>
     }
 
+    @if (reviewKey()) {
+      @if (existingReview(); as review) {
+        <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-1">
+          <h2 class="text-xs font-bold uppercase tracking-wide text-text-secondary">
+            Avaliação do motorista
+          </h2>
+          <p>
+            <span class="font-semibold text-warning">★ {{ review.rating }}/5</span>
+            <span class="text-xs text-text-secondary">
+              · {{ review.userName }} · {{ review.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+            </span>
+          </p>
+          @if (review.comment) {
+            <p class="text-sm text-text-secondary wrap-break-word">{{ review.comment }}</p>
+          }
+        </div>
+      } @else if (canReview()) {
+        @if (!reviewing()) {
+          <div class="flex justify-end">
+            <button
+              type="button"
+              (click)="openReview()"
+              class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm"
+            >
+              Avaliar motorista
+            </button>
+          </div>
+        } @else {
+          <form
+            [formGroup]="reviewForm"
+            (ngSubmit)="saveReview()"
+            class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3"
+          >
+            <h2 class="text-lg font-semibold text-text-primary">Avaliar motorista</h2>
+
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-1">
+                @for (star of stars; track star) {
+                  <button
+                    type="button"
+                    (click)="setRating(star)"
+                    [attr.aria-label]="'Nota ' + star"
+                    class="text-3xl leading-none transition-colors"
+                    [class.text-warning]="(reviewForm.controls.rating.value ?? 0) >= star"
+                    [class.text-text-muted]="(reviewForm.controls.rating.value ?? 0) < star"
+                  >
+                    ★
+                  </button>
+                }
+              </div>
+              @if (reviewForm.controls.rating.invalid && reviewForm.controls.rating.touched) {
+                <span class="text-xs text-danger">Escolha uma nota de 1 a 5</span>
+              }
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                Comentário (opcional)
+              </label>
+              <textarea
+                rows="3"
+                maxlength="1000"
+                formControlName="comment"
+                class="px-3 py-2 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
+              ></textarea>
+            </div>
+
+            @if (reviewError(); as message) {
+              <p class="text-sm text-danger">{{ message }}</p>
+            }
+
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                (click)="cancelReview()"
+                [disabled]="savingReview()"
+                class="h-10 px-4 rounded border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-sm disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                [disabled]="savingReview()"
+                class="bg-btn-primary-bg text-btn-primary-text h-10 px-6 rounded font-semibold text-sm hover:bg-btn-primary-hover transition-colors disabled:opacity-60"
+              >
+                {{ savingReview() ? 'Salvando…' : 'Enviar avaliação' }}
+              </button>
+            </div>
+          </form>
+        }
+      }
+    }
+
     <div class="bg-bg-card border border-border rounded-card p-4 md:p-6 flex flex-col gap-3">
       <div class="flex justify-between items-baseline gap-3">
         <span class="text-xs md:text-sm font-bold uppercase tracking-wide text-text-secondary">

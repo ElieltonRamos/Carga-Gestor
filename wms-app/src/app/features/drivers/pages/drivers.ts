@@ -1,11 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, debounceTime, of, switchMap } from 'rxjs';
 import { NotificationService } from '../../../shared/toastr/notification.service';
 import { DriversService } from '../services/drivers.service';
 import { Driver, DriverPayload } from '../types/driver';
+import { DriverReview } from '../types/driver-review';
 import { alertConfirm } from '../../../shared/alerts/custom-alerts';
 
 const orNull = (value: string): string | null => value.trim() || null;
@@ -22,7 +24,7 @@ interface FieldConfig {
 
 @Component({
   selector: 'app-drivers',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, DatePipe],
   templateUrl: './drivers.html',
 })
 export class Drivers {
@@ -177,5 +179,43 @@ export class Drivers {
     if (err.status === 0 || err.status === 500) return 'Servidor indisponível';
     const msg = err.error?.message;
     return Array.isArray(msg) ? msg.join(', ') : msg || fallback;
+  }
+
+  reviewsDriver = signal<Driver | null>(null);
+  reviews = signal<DriverReview[]>([]);
+  reviewsPage = signal(1);
+  reviewsTotalPages = signal(0);
+  reviewsLoading = signal(false);
+  reviewsFailed = signal(false);
+
+  openReviews(driver: Driver): void {
+    this.reviewsDriver.set(driver);
+    this.reviews.set([]);
+    this.loadReviews(1);
+  }
+
+  closeReviews(): void {
+    this.reviewsDriver.set(null);
+  }
+
+  loadReviews(page: number): void {
+    const driver = this.reviewsDriver();
+    if (!driver) return;
+
+    this.reviewsLoading.set(true);
+    this.reviewsFailed.set(false);
+
+    this.driversService.findReviews(driver.id, { page, limit: 5 }).subscribe({
+      next: (result) => {
+        this.reviews.set(result.data);
+        this.reviewsPage.set(result.page);
+        this.reviewsTotalPages.set(result.totalPages);
+        this.reviewsLoading.set(false);
+      },
+      error: () => {
+        this.reviewsFailed.set(true);
+        this.reviewsLoading.set(false);
+      },
+    });
   }
 }

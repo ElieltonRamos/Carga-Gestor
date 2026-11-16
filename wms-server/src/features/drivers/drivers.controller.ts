@@ -26,12 +26,12 @@ import { DriversService } from './drivers.service.js';
 import { CreateDriverDto } from './dto/create-driver.dto.js';
 import { UpdateDriverDto } from './dto/update-driver.dto.js';
 import { ListDriversQueryDto } from './dto/list-drivers-query.dto.js';
+import { ListDriverReviewsQueryDto } from './dto/list-driver-reviews-query.dto.js';
 import { CreateDriverReviewDto } from './dto/create-driver-review.dto.js';
 import { DriverReviewResponseDto } from './dto/driver-review-response.dto.js';
 import { DriverResponseDto } from './dto/driver-response.dto.js';
 import { CurrentUser } from '../../core/decorators/current-user.decorator.js';
 import { ApiPaginatedResponse } from '../../core/utils/paginated-response.js';
-import { PaginationQueryDto } from '../../core/utils/pagination-query.dto.js';
 
 @ApiTags('Motoristas')
 @ApiBearerAuth()
@@ -145,7 +145,7 @@ export class DriversController {
   @ApiNotFoundResponse({ description: 'Motorista não encontrado' })
   findReviews(
     @Param('id', ParseIntPipe) id: number,
-    @Query() query: PaginationQueryDto,
+    @Query() query: ListDriverReviewsQueryDto,
     @CurrentUser('username') actor: string,
   ) {
     return this.driversService.findReviews(id, query, actor);

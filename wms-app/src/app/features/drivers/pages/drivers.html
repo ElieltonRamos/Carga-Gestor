@@ -67,6 +67,79 @@
     </div>
   </form>
 
+  @if (reviewsDriver(); as driver) {
+    <div class="bg-bg-card border border-border rounded-card p-4 flex flex-col gap-3">
+      <div class="flex justify-between items-start gap-3">
+        <div class="min-w-0">
+          <h2 class="font-semibold wrap-break-word">Avaliações de {{ driver.name }}</h2>
+          <p class="text-xs text-text-secondary">
+            @if (driver.averageRating !== null) {
+              ★ {{ driver.averageRating.toFixed(1) }} · {{ driver.reviewCount }} avaliação(ões)
+            } @else {
+              Sem avaliações
+            }
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="closeReviews()"
+          class="shrink-0 h-8 px-3 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+        >
+          Fechar
+        </button>
+      </div>
+
+      @for (review of reviews(); track review.id) {
+        <div class="border-t border-border pt-2 flex flex-col gap-1 text-sm">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span class="font-semibold text-warning">★ {{ review.rating }}/5</span>
+            <span class="text-xs text-text-secondary">
+              {{ review.userName }} · {{ review.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+              @if (review.cargoLoadOrder) {
+                · Carga {{ review.cargoLoadOrder }}
+              }
+            </span>
+          </div>
+          @if (review.comment) {
+            <p class="text-text-secondary wrap-break-word">{{ review.comment }}</p>
+          }
+        </div>
+      } @empty {
+        <p class="text-sm text-text-muted">
+          @if (reviewsLoading()) {
+            Carregando...
+          } @else if (reviewsFailed()) {
+            Não foi possível carregar as avaliações.
+          } @else {
+            Nenhuma avaliação registrada.
+          }
+        </p>
+      }
+
+      @if (reviewsTotalPages() > 1) {
+        <div class="flex items-center justify-center gap-4 text-sm text-text-secondary">
+          <button
+            type="button"
+            (click)="loadReviews(reviewsPage() - 1)"
+            [disabled]="reviewsPage() === 1 || reviewsLoading()"
+            class="px-3 py-2 disabled:opacity-40"
+          >
+            Anterior
+          </button>
+          <span>{{ reviewsPage() }} / {{ reviewsTotalPages() }}</span>
+          <button
+            type="button"
+            (click)="loadReviews(reviewsPage() + 1)"
+            [disabled]="reviewsPage() === reviewsTotalPages() || reviewsLoading()"
+            class="px-3 py-2 disabled:opacity-40"
+          >
+            Próxima
+          </button>
+        </div>
+      }
+    </div>
+  }
+
   <!-- Listagem -->
   <div class="flex flex-col gap-3">
     <div class="flex flex-col gap-1 w-full md:max-w-sm">
@@ -120,6 +193,13 @@
               </td>
               <td class="order-4 w-full pt-2 md:pt-0 md:w-auto md:px-4 md:py-3">
                 <div class="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    (click)="openReviews(row)"
+                    class="h-8 px-3 rounded-input border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-btn-secondary-hover transition-colors text-xs"
+                  >
+                    Avaliações
+                  </button>
                   <button
                     type="button"
                     (click)="startEdit(row)"

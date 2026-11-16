@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   HttpException,
   Injectable,
   Logger,
@@ -9,10 +10,10 @@ import { Driver, Prisma } from '../../../generated/prisma/client.js';
 import { CreateDriverDto } from './dto/create-driver.dto.js';
 import { UpdateDriverDto } from './dto/update-driver.dto.js';
 import { ListDriversQueryDto } from './dto/list-drivers-query.dto.js';
+import { ListDriverReviewsQueryDto } from './dto/list-driver-reviews-query.dto.js';
 import { CreateDriverReviewDto } from './dto/create-driver-review.dto.js';
 import { DriverReviewResponseDto } from './dto/driver-review-response.dto.js';
 import { DriverResponseDto, RatingStats } from './dto/driver-response.dto.js';
-import { PaginationQueryDto } from '../../core/utils/pagination-query.dto.js';
 import { PaginatedResponseDto } from '../../core/utils/paginated-response.js';
 
 const EDITABLE_FIELDS = ['name', 'phone'] as const;
@@ -230,6 +231,17 @@ export class DriversService {
           );
           throw new NotFoundException('Carga não encontrada');
         }
+
+        const reviewed = await this.prisma.client.driverReview.findFirst({
+          where: { cargoId: dto.cargoId },
+          select: { id: true },
+        });
+        if (reviewed) {
+          this.logger.warn(
+            `Carga já avaliada (actor=${actor}, cargoId=${dto.cargoId})`,
+          );
+          throw new ConflictException('Esta carga já foi avaliada');
+        }
       }
 
       const created = await this.prisma.client.driverReview.create({
@@ -249,6 +261,15 @@ export class DriversService {
 
       return new DriverReviewResponseDto(created);
     } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        this.logger.warn(
+          `Carga já avaliada (actor=${actor}, driverId=${driverId})`,
+        );
+        throw new ConflictException('Esta carga já foi avaliada');
+      }
       this.rethrow(
         error,
         `Falha ao avaliar motorista (actor=${actor}, driverId=${driverId})`,
@@ -258,14 +279,17 @@ export class DriversService {
 
   async findReviews(
     driverId: number,
-    query: PaginationQueryDto,
+    query: ListDriverReviewsQueryDto,
     actor: string,
   ): Promise<PaginatedResponseDto<DriverReviewResponseDto>> {
     try {
       await this.findDriver(driverId, actor);
 
-      const { page, limit } = query;
-      const where: Prisma.DriverReviewWhereInput = { driverId };
+      const { page, limit, cargoId } = query;
+      const where: Prisma.DriverReviewWhereInput = {
+        driverId,
+        ...(cargoId ? { cargoId } : {}),
+      };
 
       const [items, total] = await this.prisma.client.$transaction([
         this.prisma.client.driverReview.findMany({

@@ -3,7 +3,18 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, exhaustMap, filter, firstValueFrom, map, of, takeWhile, timer } from 'rxjs';
+import {
+  catchError,
+  exhaustMap,
+  filter,
+  firstValueFrom,
+  map,
+  of,
+  takeWhile,
+  timer,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { computeVolumeProgress } from '../../shared/utils/volume-progress';
 import {
   Cargo,
@@ -15,9 +26,11 @@ import {
 } from '../cargo-overview/types/cargo';
 import { CargosService } from '../cargo-overview/services/cargos.service';
 import { toDeliveryDto } from '../../shared/utils/delivery-payload';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DriverSelect } from '../../shared/components/driver-select/driver-select';
 import { Driver } from '../../features/drivers/types/driver';
+import { DriversService } from '../../features/drivers/services/drivers.service';
+import { DriverReview } from '../../features/drivers/types/driver-review';
 import { ProductSelect } from '../../shared/components/product-select/product-select';
 import { Product } from '../../features/products/types/product';
 import {
@@ -59,6 +72,7 @@ export class CargoDetail {
   private readonly router = inject(Router);
   private readonly cargosService = inject(CargosService);
   private readonly fb = inject(FormBuilder);
+  private readonly driversService = inject(DriversService);
 
   private readonly cargoId = Number(this.route.snapshot.paramMap.get('cargoId'));
 
@@ -146,6 +160,38 @@ export class CargoDetail {
     releaseVolumes(this.itemsControls[index]);
   }
 
+  readonly stars = [1, 2, 3, 4, 5];
+
+  // Só carga expedida com motorista vinculado pode ser avaliada
+  readonly reviewKey = computed(
+    () => {
+      const cargo = this.cargo();
+      return cargo && cargo.status === 'DEPARTED' && cargo.driverId !== null
+        ? { cargoId: cargo.id, driverId: cargo.driverId }
+        : null;
+    },
+    { equal: (a, b) => a?.cargoId === b?.cargoId && a?.driverId === b?.driverId },
+  );
+
+  existingReview = signal<DriverReview | null>(null);
+  reviewReady = signal(false);
+  reviewing = signal(false);
+  savingReview = signal(false);
+  reviewError = signal<string | null>(null);
+
+  canReview = computed(
+    () => !!this.reviewKey() && this.reviewReady() && this.existingReview() === null,
+  );
+
+  reviewForm = this.fb.group({
+    rating: this.fb.control<number | null>(null, [
+      Validators.required,
+      Validators.min(1),
+      Validators.max(5),
+    ]),
+    comment: ['', Validators.maxLength(1000)],
+  });
+
   notFound = computed(() => !this.loading() && this.cargo() === null);
 
   overall = computed(() => computeVolumeProgress(this.cargo() ?? {}));
@@ -197,6 +243,27 @@ export class CargoDetail {
   constructor() {
     this.fetch();
     this.startPolling();
+
+    toObservable(this.reviewKey)
+      .pipe(
+        tap(() => this.reviewReady.set(false)),
+        switchMap((key) =>
+          key
+            ? this.driversService
+                .findReviews(key.driverId, { page: 1, limit: 1, cargoId: key.cargoId })
+                .pipe(
+                  map((page) => page.data[0] ?? null),
+                  catchError(() => of(undefined)),
+                )
+            : of(null),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((review) => {
+        this.existingReview.set(review ?? null);
+        // Falha na consulta: esconde a ação em vez de arriscar uma avaliação duplicada
+        this.reviewReady.set(review !== undefined);
+      });
   }
 
   private setCargo(cargo: Cargo): void {
@@ -378,6 +445,50 @@ export class CargoDetail {
       totalVolumes: item.totalVolumes ?? item.volumeCount ?? 1,
       loadedVolumes: item.loadedVolumes,
     });
+  }
+
+  openReview(): void {
+    this.reviewError.set(null);
+    this.reviewForm.reset({ rating: null, comment: '' });
+    this.reviewing.set(true);
+  }
+
+  cancelReview(): void {
+    this.reviewing.set(false);
+  }
+
+  setRating(value: number): void {
+    this.reviewForm.controls.rating.setValue(value);
+    this.reviewForm.controls.rating.markAsTouched();
+  }
+
+  async saveReview(): Promise<void> {
+    const key = this.reviewKey();
+    if (!key) return;
+    if (this.reviewForm.invalid) {
+      this.reviewForm.markAllAsTouched();
+      return;
+    }
+
+    const { rating, comment } = this.reviewForm.getRawValue();
+    this.savingReview.set(true);
+    this.reviewError.set(null);
+
+    try {
+      const review = await firstValueFrom(
+        this.driversService.createReview(key.driverId, {
+          rating: rating!,
+          cargoId: key.cargoId,
+          comment: (comment ?? '').trim() || null,
+        }),
+      );
+      this.existingReview.set(review);
+      this.reviewing.set(false);
+    } catch (error) {
+      this.reviewError.set(this.extractErrorMessage(error));
+    } finally {
+      this.savingReview.set(false);
+    }
   }
 
   openEdit(): void {

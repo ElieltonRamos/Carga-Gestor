@@ -39,6 +39,7 @@ export interface CargoItemLoader {
 export interface CargoItem {
   id: number;
   deliveryId: number;
+  productId: number | null;
   code: string | null;
   product: string;
   quantity: number;
@@ -108,7 +109,7 @@ export interface CargoClientDto {
 
 export interface CargoItemDto {
   id?: number;
-  code?: string | null;
+  productId?: number | null;
   product: string;
   quantity: number;
   volumeCount?: number | null;

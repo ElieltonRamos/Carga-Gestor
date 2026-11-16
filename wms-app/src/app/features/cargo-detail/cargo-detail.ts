@@ -18,6 +18,14 @@ import { toDeliveryDto } from '../../shared/utils/delivery-payload';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DriverSelect } from '../../shared/components/driver-select/driver-select';
 import { Driver } from '../../features/drivers/types/driver';
+import { ProductSelect } from '../../shared/components/product-select/product-select';
+import { Product } from '../../features/products/types/product';
+import {
+  applyProduct,
+  createItemGroup,
+  releaseVolumes,
+  unlinkProduct,
+} from '../../shared/utils/item-form';
 
 type CargoAction = 'depart' | 'reopen' | 'remove';
 
@@ -40,7 +48,7 @@ type PollResult = { version: number; cargo: Cargo } | 'missing' | null;
 
 @Component({
   selector: 'app-cargo-detail',
-  imports: [DatePipe, ReactiveFormsModule, DriverSelect],
+  imports: [DatePipe, ReactiveFormsModule, DriverSelect, ProductSelect],
   templateUrl: './cargo-detail.html',
 })
 export class CargoDetail {
@@ -119,11 +127,23 @@ export class CargoDetail {
       zipCode: [''],
       phone: [''],
     }),
-    items: this.fb.array([this.createItemGroup()]),
+    items: this.fb.array([createItemGroup(this.fb)]),
   });
 
   get itemsControls() {
     return this.deliveryForm.controls.items.controls;
+  }
+
+  onProductSelected(index: number, product: Product): void {
+    applyProduct(this.itemsControls[index], product);
+  }
+
+  onProductNameChanged(index: number, name: string): void {
+    unlinkProduct(this.itemsControls[index], name);
+  }
+
+  onVolumesInput(index: number): void {
+    releaseVolumes(this.itemsControls[index]);
   }
 
   notFound = computed(() => !this.loading() && this.cargo() === null);
@@ -238,7 +258,7 @@ export class CargoDetail {
   }
 
   addItem(): void {
-    this.deliveryForm.controls.items.push(this.createItemGroup());
+    this.deliveryForm.controls.items.push(createItemGroup(this.fb));
   }
 
   removeItem(index: number): void {
@@ -311,25 +331,14 @@ export class CargoDetail {
         phone: value.client.phone || undefined,
       },
       items: value.items.map((item) => ({
-        code: item.code || undefined,
+        productId: item.productId ?? undefined,
         product: item.product!,
         quantity: item.quantity!,
         volumeCount: item.volumeCount ?? undefined,
-        weight: item.weight ?? undefined,
+        weight: item.weight ?? null,
         notes: item.notes || undefined,
       })),
     };
-  }
-
-  private createItemGroup() {
-    return this.fb.group({
-      code: [''],
-      product: ['', Validators.required],
-      quantity: [1, [Validators.required, Validators.min(1)]],
-      volumeCount: [1, [Validators.required, Validators.min(1), Validators.max(9999)]],
-      weight: this.fb.control<number | null>(null),
-      notes: [''],
-    });
   }
 
   private resetDeliveryForm(): void {
@@ -337,7 +346,7 @@ export class CargoDetail {
     while (items.length > 0) {
       items.removeAt(0);
     }
-    items.push(this.createItemGroup());
+    items.push(createItemGroup(this.fb));
 
     this.deliveryForm.patchValue({
       biddingNumber: '',

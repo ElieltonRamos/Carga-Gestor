@@ -10,7 +10,7 @@ export function toDeliveryDto(delivery: CargoDelivery): CargoDeliveryDto {
     hasInstallation: delivery.hasInstallation,
     items: delivery.items.map((item) => ({
       id: item.id,
-      code: item.code,
+      productId: item.productId,
       product: item.product,
       quantity: item.quantity,
       volumeCount: item.volumeCount,

@@ -11,10 +11,19 @@ import { RomaneioPrint } from '../components/romaneio-print';
 import { CompanyService } from '../../settings/services/company.service';
 import { LogoStorage } from '../../settings/services/logo.service';
 import { LabelCard } from '../../packing-label/components/label-card';
+import { ProductSelect } from '../../../shared/components/product-select/product-select';
+import { Product } from '../../../features/products/types/product';
+import {
+  applyProduct,
+  createItemGroup,
+  releaseVolumes,
+  unlinkProduct,
+} from '../../../shared/utils/item-form';
+import { toDeliveryDto } from '../../../shared/utils/delivery-payload';
 
 @Component({
   selector: 'app-delivery-detail',
-  imports: [ReactiveFormsModule, LabelCard],
+  imports: [ReactiveFormsModule, LabelCard, ProductSelect],
   templateUrl: './delivery-detail.html',
 })
 export class DeliveryDetail {
@@ -59,7 +68,7 @@ export class DeliveryDetail {
       zipCode: [''],
       phone: [''],
     }),
-    items: this.fb.array([this.createItemGroup()]),
+    items: this.fb.array([createItemGroup(this.fb)]),
   });
 
   constructor() {
@@ -80,6 +89,18 @@ export class DeliveryDetail {
 
   get itemsControls() {
     return this.form.controls.items.controls;
+  }
+
+  onProductSelected(index: number, product: Product): void {
+    applyProduct(this.itemsControls[index], product);
+  }
+
+  onProductNameChanged(index: number, name: string): void {
+    unlinkProduct(this.itemsControls[index], name);
+  }
+
+  onVolumesInput(index: number): void {
+    releaseVolumes(this.itemsControls[index]);
   }
 
   // O código de barras é o código do volume, o mesmo usado na bipagem (/api/scans)
@@ -110,7 +131,7 @@ export class DeliveryDetail {
   });
 
   addItem(): void {
-    this.form.controls.items.push(this.createItemGroup());
+    this.form.controls.items.push(createItemGroup(this.fb));
   }
 
   removeItem(index: number): void {
@@ -167,26 +188,7 @@ export class DeliveryDetail {
 
   // O PATCH recebe a lista completa: as demais entregas seguem inalteradas (com id, sem client)
   private buildDeliveries(cargo: Cargo, current: CargoDeliveryDto): CargoDeliveryDto[] {
-    return cargo.deliveries.map((d) =>
-      d.id === this.deliveryId
-        ? current
-        : {
-            id: d.id,
-            romaneioNumber: d.romaneioNumber,
-            biddingNumber: d.biddingNumber,
-            modality: d.modality,
-            hasInstallation: d.hasInstallation,
-            items: d.items.map((i) => ({
-              id: i.id,
-              code: i.code,
-              product: i.product,
-              quantity: i.quantity,
-              volumeCount: i.volumeCount,
-              weight: i.weight,
-              notes: i.notes,
-            })),
-          },
-    );
+    return cargo.deliveries.map((d) => (d.id === this.deliveryId ? current : toDeliveryDto(d)));
   }
 
   private buildCurrentDelivery(): CargoDeliveryDto {
@@ -209,11 +211,11 @@ export class DeliveryDetail {
       },
       items: value.items.map((item) => ({
         id: item.id ?? undefined,
-        code: item.code || undefined,
+        productId: item.productId ?? null,
         product: item.product!,
         quantity: item.quantity!,
         volumeCount: item.volumeCount ?? undefined,
-        weight: item.weight ?? undefined,
+        weight: item.weight ?? null,
         notes: item.notes || undefined,
       })),
     };
@@ -228,24 +230,12 @@ export class DeliveryDetail {
     return 'Não foi possível salvar as alterações. Tente novamente.';
   }
 
-  private createItemGroup() {
-    return this.fb.group({
-      id: this.fb.control<number | null>(null),
-      code: [''],
-      product: ['', Validators.required],
-      quantity: [1, [Validators.required, Validators.min(1)]],
-      volumeCount: [1, [Validators.required, Validators.min(1)]],
-      weight: this.fb.control<number | null>(null),
-      notes: [''],
-    });
-  }
-
   private loadDelivery(delivery: CargoDelivery): void {
     const items = this.form.controls.items;
     while (items.length > 0) {
       items.removeAt(0);
     }
-    delivery.items.forEach(() => items.push(this.createItemGroup()));
+    delivery.items.forEach(() => items.push(createItemGroup(this.fb)));
 
     this.form.patchValue({
       romaneioNumber: delivery.romaneioNumber,
@@ -264,6 +254,7 @@ export class DeliveryDetail {
       },
       items: delivery.items.map((item) => ({
         id: item.id,
+        productId: item.productId ?? null,
         code: item.code ?? '',
         product: item.product,
         quantity: item.quantity,

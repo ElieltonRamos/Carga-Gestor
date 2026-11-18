@@ -489,7 +489,11 @@ export class CargosService {
         );
         throw new NotFoundException('Cliente não encontrado');
       }
-      return { clientId: client.id, snapshot: toSnapshot(client) };
+      // Texto enviado prevalece quando vêm os dois
+      return {
+        clientId: client.id,
+        snapshot: toSnapshot(dto.client ?? client),
+      };
     }
     if (!dto.client) {
       this.logger.warn(`Romaneio sem cliente informado (actor=${actor})`);
@@ -828,8 +832,24 @@ export class CargosService {
     const data = changedFields(deliveryFields(input), current);
     if (Object.keys(data).length) touched.add('romaneios');
 
-    // Snapshot do cliente. Só a troca do documento muda a referência (clientId).
-    if (input.client) {
+    // Troca para um cliente do cadastro: vincula e usa o texto enviado como snapshot
+    if (input.clientId !== undefined && input.clientId !== current.clientId) {
+      const picked = await tx.client.findUnique({
+        where: { id: input.clientId },
+      });
+      if (!picked) {
+        this.logger.warn(
+          `Cliente do romaneio não encontrado (actor=${actor}, clientId=${input.clientId})`,
+        );
+        throw new NotFoundException('Cliente não encontrado');
+      }
+      Object.assign(
+        data,
+        changedFields(toSnapshot(input.client ?? picked), current),
+        { clientId: picked.id },
+      );
+      touched.add('cliente');
+    } else if (input.client) {
       const snapshot = toSnapshot(input.client);
       const snapshotChanges = changedFields(snapshot, current);
       if (Object.keys(snapshotChanges).length) {

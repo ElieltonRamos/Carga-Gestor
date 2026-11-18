@@ -453,6 +453,25 @@
             <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
               Dados do Cliente
             </h3>
+
+            <!-- Client Select (busca por cliente cadastrado) -->
+            <div class="flex flex-col gap-2">
+              <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+                Buscar cliente cadastrado
+              </label>
+              <app-client-select
+                (clientSelected)="onClientSelected($event)"
+              />
+              @if (deliveryForm.controls.client.controls.id.value; as clientId) {
+                <p class="text-xs text-text-secondary flex items-center gap-2">
+                  Vinculado ao cadastro · Cód. {{ clientId }}
+                  <button type="button" (click)="onClientUnlink()" class="text-primary underline">
+                    Desvincular
+                  </button>
+                </p>
+              }
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               @for (field of clientFields; track field.control) {
                 <div
@@ -465,6 +484,7 @@
                     type="text"
                     [attr.maxlength]="field.maxlength"
                     [formControlName]="field.control"
+                    (input)="onClientFieldInput(field.control)"
                     class="h-10 px-3 rounded-input border border-input-border bg-input-bg text-input-text focus:border-input-border-focus focus:outline-none"
                   />
                 </div>

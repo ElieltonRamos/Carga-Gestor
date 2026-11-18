@@ -12,6 +12,8 @@ import { CompanyService } from '../../settings/services/company.service';
 import { LogoStorage } from '../../settings/services/logo.service';
 import { LabelCard } from '../../packing-label/components/label-card';
 import { ProductSelect } from '../../../shared/components/product-select/product-select';
+import { ClientSelect } from '../../../shared/components/client-select/client-select';
+import { Client } from '../../../features/clients/types/client';
 import { Product } from '../../../features/products/types/product';
 import {
   applyProduct,
@@ -20,10 +22,16 @@ import {
   unlinkProduct,
 } from '../../../shared/utils/item-form';
 import { toDeliveryDto } from '../../../shared/utils/delivery-payload';
+import {
+  applyClient,
+  createClientGroup,
+  unlinkClient,
+  toClientDto,
+} from '../../../shared/utils/client-form';
 
 @Component({
   selector: 'app-delivery-detail',
-  imports: [ReactiveFormsModule, LabelCard, ProductSelect],
+  imports: [ReactiveFormsModule, LabelCard, ProductSelect, ClientSelect],
   templateUrl: './delivery-detail.html',
 })
 export class DeliveryDetail {
@@ -58,16 +66,7 @@ export class DeliveryDetail {
     biddingNumber: [''],
     modality: [''],
     hasInstallation: [false],
-    client: this.fb.group({
-      name: ['', Validators.required],
-      document: [''],
-      address: [''],
-      neighborhood: [''],
-      city: ['', Validators.required],
-      state: [''],
-      zipCode: [''],
-      phone: [''],
-    }),
+    client: createClientGroup(this.fb),
     items: this.fb.array([createItemGroup(this.fb)]),
   });
 
@@ -101,6 +100,10 @@ export class DeliveryDetail {
 
   onVolumesInput(index: number): void {
     releaseVolumes(this.itemsControls[index]);
+  }
+
+  onClientSelected(client: Client): void {
+    applyClient(this.form.controls.client, client);
   }
 
   // O código de barras é o código do volume, o mesmo usado na bipagem (/api/scans)
@@ -199,16 +202,8 @@ export class DeliveryDetail {
       biddingNumber: value.biddingNumber || undefined,
       modality: value.modality || undefined,
       hasInstallation: value.hasInstallation ?? false,
-      client: {
-        name: value.client.name!,
-        document: value.client.document || undefined,
-        address: value.client.address || undefined,
-        neighborhood: value.client.neighborhood || undefined,
-        city: value.client.city!,
-        state: value.client.state || undefined,
-        zipCode: value.client.zipCode || undefined,
-        phone: value.client.phone || undefined,
-      },
+      clientId: value.client.id ?? undefined,
+      client: toClientDto(this.form.controls.client),
       items: value.items.map((item) => ({
         id: item.id ?? undefined,
         productId: item.productId ?? null,
@@ -243,6 +238,7 @@ export class DeliveryDetail {
       modality: delivery.modality ?? '',
       hasInstallation: delivery.hasInstallation,
       client: {
+        id: delivery.clientId ?? null,
         name: delivery.clientName,
         document: delivery.clientDocument ?? '',
         address: delivery.clientAddress ?? '',

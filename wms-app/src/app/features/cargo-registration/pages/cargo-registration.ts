@@ -9,12 +9,20 @@ import { DriverSelect } from '../../../shared/components/driver-select/driver-se
 import { Driver } from '../../../features/drivers/types/driver';
 import { ProductSelect } from '../../../shared/components/product-select/product-select';
 import { Product } from '../../../features/products/types/product';
+import { ClientSelect } from '../../../shared/components/client-select/client-select';
+import { Client } from '../../../features/clients/types/client';
 import {
   applyProduct,
   createItemGroup,
   releaseVolumes,
   unlinkProduct,
 } from '../../../shared/utils/item-form';
+import {
+  applyClient,
+  createClientGroup,
+  unlinkClient,
+  toClientDto,
+} from '../../../shared/utils/client-form';
 
 type Phase = 'config' | 'wizard' | 'done';
 type CargoConfig = Omit<CreateCargoDto, 'deliveries'> & { totalDestinations: number };
@@ -33,7 +41,7 @@ const todayInSaoPaulo = () =>
 
 @Component({
   selector: 'app-cargo-registration',
-  imports: [ReactiveFormsModule, DriverSelect, ProductSelect],
+  imports: [ReactiveFormsModule, DriverSelect, ProductSelect, ClientSelect],
   templateUrl: './cargo-registration.html',
 })
 export class CargoRegistration {
@@ -74,16 +82,7 @@ export class CargoRegistration {
     biddingNumber: [''],
     modality: [''],
     hasInstallation: [false],
-    client: this.fb.group({
-      name: ['', Validators.required],
-      document: [''],
-      address: [''],
-      neighborhood: [''],
-      city: ['', Validators.required],
-      state: [''],
-      zipCode: [''],
-      phone: [''],
-    }),
+    client: createClientGroup(this.fb),
     items: this.fb.array([createItemGroup(this.fb)]),
   });
 
@@ -101,6 +100,24 @@ export class CargoRegistration {
 
   onVolumesInput(index: number): void {
     releaseVolumes(this.itemsControls[index]);
+  }
+
+  onClientSelected(client: Client | null): void {
+    if (client) {
+      applyClient(this.deliveryForm.controls.client, client);
+    } else {
+      unlinkClient(this.deliveryForm.controls.client);
+    }
+  }
+
+  onClientFieldInput(control: string): void {
+    if (control === 'name' || control === 'document') {
+      unlinkClient(this.deliveryForm.controls.client);
+    }
+  }
+
+  onClientUnlink(): void {
+    unlinkClient(this.deliveryForm.controls.client);
   }
 
   totalDestinations = computed(() => this.config()?.totalDestinations ?? 0);
@@ -287,16 +304,8 @@ export class CargoRegistration {
       biddingNumber: value.biddingNumber || undefined,
       modality: value.modality || undefined,
       hasInstallation: value.hasInstallation ?? false,
-      client: {
-        name: value.client.name!,
-        document: value.client.document || undefined,
-        address: value.client.address || undefined,
-        neighborhood: value.client.neighborhood || undefined,
-        city: value.client.city!,
-        state: value.client.state || undefined,
-        zipCode: value.client.zipCode || undefined,
-        phone: value.client.phone || undefined,
-      },
+      clientId: value.client.id ?? undefined,
+      client: toClientDto(this.deliveryForm.controls.client),
       items: value.items.map((item) => ({
         productId: item.productId ?? undefined,
         product: item.product!,
@@ -329,6 +338,7 @@ export class CargoRegistration {
       modality: '',
       hasInstallation: false,
       client: {
+        id: null,
         name: '',
         document: '',
         address: '',

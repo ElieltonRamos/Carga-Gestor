@@ -72,6 +72,21 @@
           <h3 class="text-sm font-bold uppercase tracking-wide text-text-secondary">
             Dados do Cliente
           </h3>
+
+          <!-- Client Select (busca por cliente cadastrado) -->
+          <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
+              Buscar cliente cadastrado
+            </label>
+            <app-client-select
+              [disabled]="isLocked()"
+              (clientSelected)="onClientSelected($event)"
+            />
+            @if (form.controls.client.controls.id.value; as clientId) {
+              <p class="text-xs text-text-secondary">Vinculado ao cadastro · Cód. {{ clientId }}</p>
+            }
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="flex flex-col gap-2">
               <label class="text-xs font-bold tracking-wide text-text-secondary uppercase"

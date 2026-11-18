@@ -28,6 +28,8 @@ import { CargosService } from '../cargo-overview/services/cargos.service';
 import { toDeliveryDto } from '../../shared/utils/delivery-payload';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DriverSelect } from '../../shared/components/driver-select/driver-select';
+import { ClientSelect } from '../../shared/components/client-select/client-select';
+import { Client } from '../../features/clients/types/client';
 import { Driver } from '../../features/drivers/types/driver';
 import { DriversService } from '../../features/drivers/services/drivers.service';
 import { DriverReview } from '../../features/drivers/types/driver-review';
@@ -39,6 +41,12 @@ import {
   releaseVolumes,
   unlinkProduct,
 } from '../../shared/utils/item-form';
+import {
+  applyClient,
+  createClientGroup,
+  unlinkClient,
+  toClientDto,
+} from '../../shared/utils/client-form';
 
 type CargoAction = 'depart' | 'reopen' | 'remove';
 
@@ -61,7 +69,7 @@ type PollResult = { version: number; cargo: Cargo } | 'missing' | null;
 
 @Component({
   selector: 'app-cargo-detail',
-  imports: [DatePipe, ReactiveFormsModule, DriverSelect, ProductSelect],
+  imports: [DatePipe, ReactiveFormsModule, DriverSelect, ProductSelect, ClientSelect],
   templateUrl: './cargo-detail.html',
 })
 export class CargoDetail {
@@ -131,16 +139,7 @@ export class CargoDetail {
     biddingNumber: [''],
     modality: [''],
     hasInstallation: [false],
-    client: this.fb.group({
-      name: ['', Validators.required],
-      document: [''],
-      address: [''],
-      neighborhood: [''],
-      city: ['', Validators.required],
-      state: [''],
-      zipCode: [''],
-      phone: [''],
-    }),
+    client: createClientGroup(this.fb),
     items: this.fb.array([createItemGroup(this.fb)]),
   });
 
@@ -158,6 +157,20 @@ export class CargoDetail {
 
   onVolumesInput(index: number): void {
     releaseVolumes(this.itemsControls[index]);
+  }
+
+  onClientSelected(client: Client): void {
+    applyClient(this.deliveryForm.controls.client, client);
+  }
+
+  onClientFieldInput(control: string): void {
+    if (control === 'name' || control === 'document') {
+      unlinkClient(this.deliveryForm.controls.client);
+    }
+  }
+
+  onClientUnlink(): void {
+    unlinkClient(this.deliveryForm.controls.client);
   }
 
   readonly stars = [1, 2, 3, 4, 5];
@@ -387,16 +400,8 @@ export class CargoDetail {
       biddingNumber: value.biddingNumber || undefined,
       modality: value.modality || undefined,
       hasInstallation: value.hasInstallation ?? false,
-      client: {
-        name: value.client.name!,
-        document: value.client.document || undefined,
-        address: value.client.address || undefined,
-        neighborhood: value.client.neighborhood || undefined,
-        city: value.client.city!,
-        state: value.client.state || undefined,
-        zipCode: value.client.zipCode || undefined,
-        phone: value.client.phone || undefined,
-      },
+      clientId: value.client.id ?? undefined,
+      client: toClientDto(this.deliveryForm.controls.client),
       items: value.items.map((item) => ({
         productId: item.productId ?? undefined,
         product: item.product!,
@@ -420,6 +425,7 @@ export class CargoDetail {
       modality: '',
       hasInstallation: false,
       client: {
+        id: null,
         name: '',
         document: '',
         address: '',

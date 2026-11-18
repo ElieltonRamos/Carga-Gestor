@@ -29,7 +29,7 @@ Company: registro único (dados da empresa, licenseKey, licenseToken, settings J
 ```
 
 - `Volume.code` (único) = `{cargoId}-{sequence}-{itemId}-{n}`. É o código da etiqueta e o que `/scans` recebe. Único no banco, **não entre bancos**: reset/restore ou mais de uma instalação podem repetir o código em etiquetas diferentes.
-- Únicos: `Cargo.loadOrder`, `Delivery.romaneioNumber`, `(Delivery.cargoId, sequence)`, `(Volume.deliveryItemId, number)`.
+- Únicos: `Delivery.romaneioNumber`, `(Delivery.cargoId, sequence)`, `(Volume.deliveryItemId, number)`. `Cargo.loadOrder` não é mais único (pode repetir) e é opcional.
 - Deletar `Cargo` remove em cascata `Delivery → DeliveryItem → Volume`.
 - `Cargo.pendingAtDeparture`: volumes pendentes no momento da expedição.
 - Índices: `Cargo(createdAt)`, `Cargo(status, createdAt)`, `ScanLog(createdAt)` e os demais do schema.
@@ -90,7 +90,8 @@ Campos: `cnpj` (14 dígitos, aceita máscara), `name` (razão social, obrigatór
 - `GET /cargos` sem `createdFrom`/`createdTo` retorna só o dia atual (America/Sao_Paulo); `createdFrom > createdTo` → 400.
 - Itens não trazem lista de volumes; `weight` é número. `loadDate`/`issueDate` chegam em ISO UTC (`2026-10-15T00:00:00.000Z`).
 - `PATCH`: permitido em qualquer status exceto `DEPARTED` (409). `deliveries` é a lista completa: com `id` mantém, sem `id` cria (exige `client` ou `clientId`), ausente remove. A lista não pode ficar vazia; sem `deliveries`, só o cabeçalho muda. Não remove romaneio/item nem reduz volumes já carregados (409; estornar antes com `/scans/undo`). Reenviar romaneio existente sem `client` mantém o snapshot.
-- `romaneioNumber` e `loadOrder` duplicados → 409.
+- `romaneioNumber` duplicado → 409. `loadOrder` pode repetir (não é mais único).
+- Romaneio aceita `clientId` (vincula cliente do cadastro) e `client` (snapshot) juntos: o texto enviado prevalece; trocar o documento reaponta o cadastro. Na edição, enviar `clientId` diferente troca o vínculo e usa o `client` como snapshot; sem `clientId`, edita o snapshot e, se o documento mudar, vincula/cria pelo documento.
 
 ### `/scans`
 
@@ -185,7 +186,8 @@ features/  pages/ · services/ · types/ · components/
   delivery-detail (components/romaneio-print) · packing-label (components/barcode, label-card)
   scan-check (LEGADO) · clients · settings (company-form, company-logo, users-list)
 shared/    alerts · app-layout · offline (not-found, offline) · paginator · toastr
-           utils/ (delivery-payload, delivery-progress [legado], form-utils, volume-progress)
+           components/ (driver-select, product-select, client-select)
+           utils/ (delivery-payload, delivery-progress [legado], form-utils, volume-progress, item-form, client-form)
 ```
 
 ### `wms-mobile/app/src/main/java/com/carga_gestor/wms_mobile/`
@@ -214,6 +216,38 @@ util/  JwtDecoder · NetworkErrorHandler · Resource · TokenManager
 | `configuracoes`                        | `Settings`          | `CompanyForm` + `UsersList`                                                             |
 
 `authGuard` só na rota pai do `AppLayout`. Sem diferenciação por role no frontend (navbar e telas iguais para todos).
+
+## Novas funcionalidades (últimos commits)
+
+### Ordem de carga opcional e não única
+- `loadOrder` agora é opcional (`string | null`) e pode repetir. Removida validação de unicidade no backend.
+- Frontend: campo sem `required`, label "(opcional)", título mostra "—" quando vazio.
+- Mobile: `loadOrder: String?`, fallback "Conferência" no cabeçalho da bipagem.
+
+### Seleção de cliente cadastrado no romaneio (wizard, novo romaneio, edição de romaneio)
+- Novo componente `ClientSelect`: busca por nome ou CNPJ/CPF (usa só dígitos), lista clientes cadastrados.
+- Novo utilitário `client-form.ts`: `createClientGroup`, `applyClient`, `unlinkClient`, `toClientDto`.
+- Formulários usam `client: createClientGroup(fb)` (o vínculo vive em `client.id`, não mais em `clientId` de nível superior).
+- Selecionar um cliente preenche todos os campos e mostra "Vinculado ao cadastro · Cód. X" com botão "Desvincular".
+- Editar nome ou CNPJ/CPF desvincula automaticamente; o backend vincula ou cria pelo documento.
+- Sem resultado na busca: aviso orienta a preencher à mão (cadastro automático só com CNPJ/CPF).
+- `cargo-delivery.dto.ts` aceita `clientId` e `client` juntos; backend trata ambos.
+
+### Avaliação de motoristas
+- Endpoints `GET/POST /api/drivers/:id/reviews` com paginação.
+- Interface: tabela de motoristas mostra média e contagem; modal de avaliação (nota 1–5 + comentário opcional).
+- Só carga `DEPARTED` com motorista vinculado pode ser avaliada; uma avaliação por carga.
+
+### Catálogo de produtos integrado
+- Rota `/produtos` com página de gerenciamento e ícone na navegação lateral.
+- `CargoItemDto` / `CargoItemResponseDto` com `productId` opcional.
+- Backend resolve: com `productId` usa cadastro; sem, reaproveita pelo nome ou cria dinamicamente (peso do item, volumes por unidade quando divisão exata).
+- Frontend: `ProductSelect` nos formulários de itens (wizard, novo romaneio, edição de romaneio).
+
+### Seleção direta de motorista
+- Input direto de telefone do motorista + seleção de motorista cadastrado.
+- Backend resolve: com `driverId` valida e copia cadastro; só com nome, reaproveita ou cria.
+- Frontend: `DriverSelect` com busca e digitação livre.
 
 ## Convenções e armadilhas
 

@@ -25,6 +25,7 @@ import { lockCargoRow } from './cargo-lock.js';
 const HEADER_FIELDS = [
   'loadDate',
   'issueDate',
+  'loadOrder',
   'driverName',
   'driverPhone',
   'truck',
@@ -152,11 +153,6 @@ export class CargosService {
     }
     const target = String(error.meta?.target ?? '');
     this.logger.warn(`Violação de unicidade (target=${target})`);
-    if (target.includes('load_order')) {
-      return new ConflictException(
-        'Já existe uma carga com esta ordem de carga',
-      );
-    }
     if (target.includes('romaneio_number')) {
       return new ConflictException('Já existe um romaneio com este número');
     }
@@ -286,26 +282,6 @@ export class CargosService {
       ...total,
       deliveries: mappedDeliveries,
     });
-  }
-
-  // loadOrder é único. excludeId ignora a própria carga na edição
-  private async assertLoadOrderAvailable(
-    loadOrder: string,
-    actor: string,
-    excludeId?: number,
-  ): Promise<void> {
-    const existing = await this.prisma.client.cargo.findUnique({
-      where: { loadOrder },
-      select: { id: true },
-    });
-    if (existing && existing.id !== excludeId) {
-      this.logger.warn(
-        `Ordem de carga já cadastrada (actor=${actor}, existenteId=${existing.id})`,
-      );
-      throw new ConflictException(
-        'Já existe uma carga com esta ordem de carga',
-      );
-    }
   }
 
   // romaneioNumber é único no sistema. Na edição, ignora os romaneios da própria carga
@@ -1050,7 +1026,6 @@ export class CargosService {
 
   async create(dto: CreateCargoDto, actor: string): Promise<CargoResponseDto> {
     try {
-      await this.assertLoadOrderAvailable(dto.loadOrder, actor);
       await this.assertRomaneiosAvailable(
         dto.deliveries.map((d) => d.romaneioNumber),
         actor,
@@ -1062,7 +1037,7 @@ export class CargosService {
 
           const cargo = await tx.cargo.create({
             data: {
-              loadOrder: dto.loadOrder,
+              loadOrder: dto.loadOrder ?? null,
               totalDestinations: dto.deliveries.length,
               loadDate: dateOnly(dto.loadDate),
               issueDate: dateOnly(dto.issueDate),
@@ -1122,11 +1097,6 @@ export class CargosService {
       }
 
       const changes = this.headerChanges(cargo, dto);
-
-      if (dto.loadOrder !== undefined && dto.loadOrder !== cargo.loadOrder) {
-        await this.assertLoadOrderAvailable(dto.loadOrder, actor, id);
-        changes.loadOrder = dto.loadOrder;
-      }
 
       if (dto.deliveries !== undefined) {
         this.assertOwnership(cargo, dto.deliveries, actor);

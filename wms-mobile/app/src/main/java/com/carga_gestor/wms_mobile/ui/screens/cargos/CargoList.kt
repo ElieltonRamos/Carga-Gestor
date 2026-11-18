@@ -296,6 +296,7 @@ private fun CargoCard(cargo: CargoSummary, onClick: () -> Unit) {
     val people = listOfNotNull(cargo.driverName, cargo.truck).joinToString(" · ")
     val destinations =
         if (cargo.totalDestinations == 1) "1 romaneio" else "${cargo.totalDestinations} romaneios"
+    val displayLoadOrder = cargo.loadOrder ?: "—"
 
     Surface(
         onClick = onClick,
@@ -307,7 +308,7 @@ private fun CargoCard(cargo: CargoSummary, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = cargo.loadOrder,
+                    text = displayLoadOrder,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,

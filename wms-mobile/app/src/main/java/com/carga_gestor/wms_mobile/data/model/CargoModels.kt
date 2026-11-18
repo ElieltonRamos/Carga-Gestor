@@ -57,7 +57,7 @@ enum class ScanReason(@SerializedName("value") val value: String) {
 @Serializable
 data class CargoSummary(
     @SerializedName("id") val id: Int,
-    @SerializedName("loadOrder") val loadOrder: String,
+    @SerializedName("loadOrder") val loadOrder: String?,
     @SerializedName("totalDestinations") val totalDestinations: Int,
     @SerializedName("status") val status: CargoStatus,
     @SerializedName("loadDate") val loadDate: String, // YYYY-MM-DD
@@ -78,7 +78,7 @@ data class CargoSummary(
 @Serializable
 data class CargoDetail(
     @SerializedName("id") val id: Int,
-    @SerializedName("loadOrder") val loadOrder: String,
+    @SerializedName("loadOrder") val loadOrder: String?,
     @SerializedName("totalDestinations") val totalDestinations: Int,
     @SerializedName("status") val status: CargoStatus,
     @SerializedName("loadDate") val loadDate: String,

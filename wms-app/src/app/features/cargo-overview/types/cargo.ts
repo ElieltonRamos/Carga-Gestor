@@ -3,7 +3,7 @@ export type DeliveryStatus = 'GENERATED';
 
 export interface CargoListItem {
   id: number;
-  loadOrder: string;
+  loadOrder: string | null;
   totalDestinations: number;
   status: CargoStatus;
   loadDate: string;
@@ -142,7 +142,7 @@ export interface CargoHeaderDto {
 }
 
 export interface CreateCargoDto extends CargoHeaderDto {
-  loadOrder: string;
+  loadOrder?: string | null;
   loadDate: string; // AAAA-MM-DD
   issueDate: string; // AAAA-MM-DD
   deliveries: CargoDeliveryDto[];

@@ -186,7 +186,7 @@ export class ReportsService {
     const loadTimes = timedCargos
       .filter((c) => c.endedAt)
       .map((c) => ({
-        loadOrder: c.loadOrder,
+        loadOrder: c.loadOrder ?? null,
         seconds: seconds(c.startedAt!, c.endedAt!),
       }));
     const departTimes = timedCargos

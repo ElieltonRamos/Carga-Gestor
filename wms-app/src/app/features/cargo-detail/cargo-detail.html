@@ -20,7 +20,7 @@
         </button>
         <div class="flex flex-wrap items-center gap-2 md:gap-3">
           <h1 class="text-xl md:text-2xl font-bold text-text-primary wrap-break-word">
-            {{ cargo()!.loadOrder }}
+            {{ cargo()!.loadOrder || '—' }}
           </h1>
           <span
             class="text-xs font-bold px-2 py-1 rounded-badge"
@@ -103,7 +103,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="flex flex-col gap-2">
             <label class="text-xs font-bold tracking-wide text-text-secondary uppercase">
-              Ordem do carregamento
+              Ordem do carregamento (opcional)
             </label>
             <input
               type="text"

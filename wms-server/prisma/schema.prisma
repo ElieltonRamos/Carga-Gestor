@@ -167,7 +167,7 @@ model NumberSequence {
 
 model Cargo {
   id                      Int            @id @default(autoincrement())
-  loadOrder               String         @unique @map("load_order")
+  loadOrder               String?        @map("load_order")
   totalDestinations       Int            @map("total_destinations")
   status                  CargoStatus    @default(OPEN)
   loadDate                DateTime       @map("load_date") @db.Date

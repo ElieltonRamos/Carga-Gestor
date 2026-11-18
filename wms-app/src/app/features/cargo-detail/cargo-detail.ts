@@ -97,7 +97,7 @@ export class CargoDetail {
   errorMessage = signal<string | null>(null);
 
   editForm = this.fb.group({
-    loadOrder: ['', Validators.required],
+    loadOrder: [''],
     loadDate: ['', Validators.required],
     issueDate: ['', Validators.required],
     driverId: [null as number | null],
@@ -498,7 +498,7 @@ export class CargoDetail {
     this.action.set(null);
     this.errorMessage.set(null);
     this.editForm.reset({
-      loadOrder: cargo.loadOrder,
+      loadOrder: cargo.loadOrder ?? '',
       loadDate: cargo.loadDate.slice(0, 10),
       issueDate: cargo.issueDate.slice(0, 10),
       driverId: cargo.driverId ?? null,
@@ -637,8 +637,8 @@ export class CargoDetail {
     const value = this.editForm.getRawValue();
     const changes: UpdateCargoDto = {};
 
-    const loadOrder = (value.loadOrder ?? '').trim();
-    if (loadOrder !== cargo.loadOrder) changes.loadOrder = loadOrder;
+    const loadOrder = (value.loadOrder ?? '').trim() || null;
+    if (loadOrder !== (cargo.loadOrder ?? null)) changes.loadOrder = loadOrder;
 
     const loadDate = value.loadDate ?? '';
     if (loadDate !== cargo.loadDate.slice(0, 10)) changes.loadDate = loadDate;

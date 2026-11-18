@@ -87,8 +87,9 @@ fun ScanScreen(
 
     Scaffold(
         topBar = {
+            val cargo = state.cargo
             TopAppBar(
-                title = { Text("Conferência") },
+                title = { Text(cargo?.loadOrder?.takeIf { it.isNotBlank() } ?: "Conferência") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")

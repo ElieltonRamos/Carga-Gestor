@@ -5,8 +5,8 @@ export class CargoListItemDto {
   @ApiProperty({ example: 1 })
   id: number;
 
-  @ApiProperty({ example: 'OC-2026-0001' })
-  loadOrder: string;
+  @ApiProperty({ nullable: true, type: String, example: 'OC-2026-0001' })
+  loadOrder: string | null;
 
   @ApiProperty({ description: 'Quantidade de romaneios', example: 3 })
   totalDestinations: number;

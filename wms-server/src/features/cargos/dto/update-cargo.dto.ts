@@ -3,7 +3,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
-  IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   ValidateIf,
@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import {
   IsDateOnly,
-  trim,
+  trimOrNull,
   ValidationMessages,
 } from '../../../core/utils/validation';
 import { CargoHeaderDto } from './cargo-header.dto';
@@ -19,17 +19,18 @@ import { CargoDeliveryDto } from './cargo-delivery.dto';
 
 export class UpdateCargoDto extends CargoHeaderDto {
   @ApiPropertyOptional({
-    description: 'Ordem de carga (única). Só altera com a carga aberta',
+    description: 'Ordem de carga (opcional, pode repetir). Vazio ou null limpa o valor',
     example: 'OC-2026-0001',
+    nullable: true,
+    type: String,
   })
-  @ValidateIf((o: UpdateCargoDto) => o.loadOrder !== undefined)
-  @Transform(trim)
+  @IsOptional()
+  @Transform(trimOrNull)
   @IsString({ message: ValidationMessages.IS_STRING('A ordem de carga') })
-  @IsNotEmpty({ message: ValidationMessages.IS_NOT_BLANK('A ordem de carga') })
   @MaxLength(191, {
     message: ValidationMessages.MAX_LENGTH('A ordem de carga', 191),
   })
-  loadOrder?: string;
+  loadOrder?: string | null;
 
   @ApiPropertyOptional({
     description: 'Data da carga (AAAA-MM-DD)',

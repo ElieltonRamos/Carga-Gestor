@@ -58,7 +58,7 @@ export class CargoRegistration {
 
   cargoConfigForm = this.fb.group({
     totalDestinations: [1, [Validators.required, Validators.min(1)]],
-    loadOrder: ['', Validators.required],
+    loadOrder: [''],
     loadDate: ['', Validators.required],
     issueDate: [todayInSaoPaulo(), Validators.required],
     driverId: [null as number | null],
@@ -158,7 +158,7 @@ export class CargoRegistration {
     this.errorMessage.set(null);
     this.config.set({
       totalDestinations: value.totalDestinations!,
-      loadOrder: value.loadOrder!,
+      loadOrder: value.loadOrder?.trim() || null,
       loadDate: value.loadDate!,
       issueDate: value.issueDate!,
       driverId: value.driverId ?? null,

@@ -1,33 +1,35 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
-  IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
 import {
   IsDateOnly,
-  trim,
+  trimOrNull,
   ValidationMessages,
 } from '../../../core/utils/validation';
 import { CargoHeaderDto } from './cargo-header.dto';
 import { CargoDeliveryDto } from './cargo-delivery.dto';
 
 export class CreateCargoDto extends CargoHeaderDto {
-  @ApiProperty({
-    description: 'Ordem de carga (única)',
+  @ApiPropertyOptional({
+    description: 'Ordem de carga (opcional, pode repetir)',
     example: 'OC-2026-0001',
+    nullable: true,
+    type: String,
   })
-  @Transform(trim)
+  @IsOptional()
+  @Transform(trimOrNull)
   @IsString({ message: ValidationMessages.IS_STRING('A ordem de carga') })
-  @IsNotEmpty({ message: ValidationMessages.IS_NOT_EMPTY('A ordem de carga') })
   @MaxLength(191, {
     message: ValidationMessages.MAX_LENGTH('A ordem de carga', 191),
   })
-  loadOrder: string;
+  loadOrder?: string | null;
 
   @ApiProperty({
     description: 'Data da carga (AAAA-MM-DD)',

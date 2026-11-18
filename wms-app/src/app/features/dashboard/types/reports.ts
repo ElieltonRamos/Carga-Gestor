@@ -22,12 +22,12 @@ export interface LoadingTimeReport {
   cargos: number;
   avgLoadSeconds: number | null;
   avgToDepartSeconds: number | null;
-  longestLoad: { loadOrder: string; seconds: number } | null;
+  longestLoad: { loadOrder: string | null; seconds: number } | null;
 }
 
 export interface PendingCargo {
   id: number;
-  loadOrder: string;
+  loadOrder: string | null;
   pendingAtDeparture: number | null;
   departedAt: string | null;
   driverName: string | null;

@@ -3,7 +3,7 @@ import { DriverReview } from '../../../../generated/prisma/client.js';
 
 type ReviewRow = DriverReview & {
   user: { name: string };
-  cargo: { loadOrder: string } | null;
+  cargo: { loadOrder: string | null } | null;
 };
 
 export class DriverReviewResponseDto {
